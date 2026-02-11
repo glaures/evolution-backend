@@ -19,5 +19,12 @@ spring:
       hibernate:
         format_sql: true
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://sts.windows.net/38402fde-23c3-4417-97d7-b4410232a9ea/
+          audiences: api://0a1d5147-34e1-417b-9cb1-657286aca5bb
+
 server:
   port: 8080
