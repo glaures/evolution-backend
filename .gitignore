@@ -23,5 +23,5 @@
 hs_err_pid*
 replay_pid*
 
-.idea
-src/main/resources/application-dev.yml
+.idea/
+application-dev.yml
