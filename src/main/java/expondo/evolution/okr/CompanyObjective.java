@@ -1,9 +1,11 @@
 package expondo.evolution.okr;
 
+import expondo.evolution.user.Unit;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import org.hibernate.envers.Audited;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +15,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Audited
 public class CompanyObjective {
 
     @Id
@@ -20,7 +23,7 @@ public class CompanyObjective {
     private Long id;
 
     @Column(nullable = false)
-    private String code; // e.g., "CO1"
+    private String code;
 
     @Column(nullable = false)
     private String name;
@@ -31,6 +34,10 @@ public class CompanyObjective {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "cycle_id", nullable = false)
     private Cycle cycle;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_unit_id")
+    private Unit ownerUnit;
 
     @OneToMany(mappedBy = "companyObjective", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<KeyResult> keyResults = new ArrayList<>();

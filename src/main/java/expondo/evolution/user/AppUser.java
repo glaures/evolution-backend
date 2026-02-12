@@ -1,15 +1,18 @@
 package expondo.evolution.user;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+import org.hibernate.envers.Audited;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 
 @Entity
 @Table(name = "app_users")
+@Audited
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -27,6 +30,8 @@ public class AppUser {
     private String displayName;
 
     private boolean enabled = false;
+
+    private Instant lastLoginAt;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @Enumerated(EnumType.STRING)

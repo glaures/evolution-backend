@@ -4,6 +4,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.util.Set;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -13,12 +16,18 @@ public class UserService {
     @Transactional
     public AppUser findOrCreate(String oid, String email, String displayName) {
         return userRepository.findByMicrosoftOid(oid)
+                .map(user -> {
+                    user.setLastLoginAt(Instant.now());
+                    return userRepository.save(user);
+                })
                 .orElseGet(() -> {
                     AppUser newUser = new AppUser();
                     newUser.setMicrosoftOid(oid);
                     newUser.setEmail(email);
                     newUser.setDisplayName(displayName);
-                    newUser.setEnabled(false);
+                    newUser.setEnabled(true);
+                    newUser.setRoles(Set.of(AppRole.USER));
+                    newUser.setLastLoginAt(Instant.now());
                     return userRepository.save(newUser);
                 });
     }
