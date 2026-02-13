@@ -4,8 +4,6 @@ import expondo.evolution.okr.dto.CompanyObjectiveCreateDto;
 import expondo.evolution.okr.dto.CompanyObjectiveDto;
 import expondo.evolution.okr.dto.CompanyObjectiveUpdateDto;
 import expondo.evolution.okr.mapper.CompanyObjectiveMapper;
-import expondo.evolution.user.Unit;
-import expondo.evolution.user.UnitRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,7 +16,6 @@ public class CompanyObjectiveService {
 
     private final CompanyObjectiveRepository objectiveRepository;
     private final CycleRepository cycleRepository;
-    private final UnitRepository unitRepository;
     private final CompanyObjectiveMapper objectiveMapper;
 
     public List<CompanyObjectiveDto> findByCycleId(Long cycleId) {
@@ -41,11 +38,8 @@ public class CompanyObjectiveService {
         CompanyObjective objective = objectiveMapper.toEntity(dto);
         objective.setCycle(cycle);
 
-        if (dto.ownerUnitId() != null) {
-            Unit unit = unitRepository.findById(dto.ownerUnitId())
-                    .orElseThrow(() -> new RuntimeException("Unit not found: " + dto.ownerUnitId()));
-            objective.setOwnerUnit(unit);
-        }
+        long count = objectiveRepository.findByCycleIdOrderByCodeAsc(cycleId).size();
+        objective.setCode("CO" + (count + 1));
 
         return objectiveMapper.toDto(objectiveRepository.save(objective));
     }
@@ -55,15 +49,6 @@ public class CompanyObjectiveService {
         CompanyObjective objective = objectiveRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Objective not found: " + id));
         objectiveMapper.updateEntity(dto, objective);
-
-        if (dto.ownerUnitId() != null) {
-            Unit unit = unitRepository.findById(dto.ownerUnitId())
-                    .orElseThrow(() -> new RuntimeException("Unit not found: " + dto.ownerUnitId()));
-            objective.setOwnerUnit(unit);
-        } else {
-            objective.setOwnerUnit(null);
-        }
-
         return objectiveMapper.toDto(objectiveRepository.save(objective));
     }
 

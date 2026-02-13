@@ -1,6 +1,5 @@
 package expondo.evolution.okr;
 
-import expondo.evolution.user.Unit;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -12,10 +11,10 @@ import java.util.List;
 
 @Entity
 @Table(name = "company_objectives")
+@Audited
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Audited
 public class CompanyObjective {
 
     @Id
@@ -35,10 +34,9 @@ public class CompanyObjective {
     @JoinColumn(name = "cycle_id", nullable = false)
     private Cycle cycle;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_unit_id")
-    private Unit ownerUnit;
-
     @OneToMany(mappedBy = "companyObjective", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<KeyResult> keyResults = new ArrayList<>();
+
+    @OneToMany(mappedBy = "companyObjective", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Tactic> tactics = new ArrayList<>();
 }

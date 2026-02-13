@@ -8,7 +8,6 @@ public record CompanyObjectiveDto(
         String name,
         String description,
         Long cycleId,
-        Long ownerUnitId,
-        String ownerUnitName,
-        List<KeyResultDto> keyResults
+        List<KeyResultDto> keyResults,
+        List<TacticDto> tactics
 ) {}

@@ -12,16 +12,15 @@ import org.mapstruct.MappingTarget;
 public interface KeyResultMapper {
 
     @Mapping(target = "companyObjectiveId", source = "companyObjective.id")
-    @Mapping(target = "baseValue", expression = "java(entity.getBaseValue())")
     KeyResultDto toDto(KeyResult entity);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "code", ignore = true)
     @Mapping(target = "companyObjective", ignore = true)
-    @Mapping(target = "deliverables", ignore = true)
     KeyResult toEntity(KeyResultCreateDto dto);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "companyObjective", ignore = true)
-    @Mapping(target = "deliverables", ignore = true)
+    @Mapping(target = "code", ignore = true)
     void updateEntity(KeyResultUpdateDto dto, @MappingTarget KeyResult entity);
 }

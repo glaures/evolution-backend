@@ -40,7 +40,8 @@ public class AuditService {
             Map.entry("TimeboxReport", TimeboxReport.class),
             Map.entry("TimeboxEffort", TimeboxEffort.class),
             Map.entry("TimeboxDelivery", TimeboxDelivery.class),
-            Map.entry("AppUser", AppUser.class)
+            Map.entry("AppUser", AppUser.class),
+            Map.entry("Tactic", Tactic.class)
     );
 
     public List<AuditRevisionDto> getRevisions(String entityType, String userEmail,

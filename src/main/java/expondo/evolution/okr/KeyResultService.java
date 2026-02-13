@@ -19,7 +19,7 @@ public class KeyResultService {
     private final KeyResultMapper keyResultMapper;
 
     public List<KeyResultDto> findByObjectiveId(Long objectiveId) {
-        return keyResultRepository.findByCompanyObjectiveIdOrderByPriorityAsc(objectiveId).stream()
+        return keyResultRepository.findByCompanyObjectiveIdOrderByCodeAsc(objectiveId).stream()
                 .map(keyResultMapper::toDto)
                 .toList();
     }
@@ -37,6 +37,10 @@ public class KeyResultService {
 
         KeyResult keyResult = keyResultMapper.toEntity(dto);
         keyResult.setCompanyObjective(objective);
+
+        long count = keyResultRepository.findByCompanyObjectiveIdOrderByCodeAsc(objectiveId).size();
+        keyResult.setCode(objective.getCode() + ".KR" + (count + 1));
+
         return keyResultMapper.toDto(keyResultRepository.save(keyResult));
     }
 

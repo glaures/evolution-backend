@@ -5,7 +5,5 @@ public record KeyResultDto(
         String code,
         String name,
         String description,
-        Integer priority,
-        int baseValue,
         Long companyObjectiveId
 ) {}
