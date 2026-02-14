@@ -93,6 +93,14 @@ public class TacticService {
                 .orElseThrow(() -> new RuntimeException("Tactic not found: " + id));
         tacticMapper.updateEntity(dto, tactic);
 
+        // Handle objective reassignment
+        if (dto.companyObjectiveId() != null
+                && !dto.companyObjectiveId().equals(tactic.getCompanyObjective().getId())) {
+            CompanyObjective newObjective = objectiveRepository.findById(dto.companyObjectiveId())
+                    .orElseThrow(() -> new RuntimeException("Objective not found: " + dto.companyObjectiveId()));
+            tactic.setCompanyObjective(newObjective);
+        }
+
         if (dto.responsibleUnitId() != null) {
             Unit unit = unitRepository.findById(dto.responsibleUnitId())
                     .orElseThrow(() -> new RuntimeException("Unit not found: " + dto.responsibleUnitId()));

@@ -1,7 +1,9 @@
 package expondo.evolution.planning;
 
+import expondo.evolution.user.Team;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import org.hibernate.envers.Audited;
@@ -14,7 +16,8 @@ import java.util.List;
 @Table(name = "timebox_reports", uniqueConstraints = {
     @UniqueConstraint(columnNames = {"team_id", "timebox_id"})
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Audited
@@ -45,13 +48,13 @@ public class TimeboxReport {
     private BigDecimal effortAdministration = BigDecimal.ZERO;
 
     /**
-     * Detailed breakdown of solution development effort per deliverable.
+     * Detailed breakdown of solution development effort per tactic.
      */
     @OneToMany(mappedBy = "timeboxReport", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TimeboxEffort> efforts = new ArrayList<>();
 
     /**
-     * Delivery progress per deliverable for this timebox.
+     * Releases delivered during this timebox.
      */
     @OneToMany(mappedBy = "timeboxReport", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TimeboxDelivery> deliveries = new ArrayList<>();

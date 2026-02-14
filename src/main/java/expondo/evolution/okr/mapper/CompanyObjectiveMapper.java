@@ -25,6 +25,5 @@ public interface CompanyObjectiveMapper {
     @Mapping(target = "cycle", ignore = true)
     @Mapping(target = "keyResults", ignore = true)
     @Mapping(target = "tactics", ignore = true)
-    @Mapping(target = "code", ignore = true)
     void updateEntity(CompanyObjectiveUpdateDto dto, @MappingTarget CompanyObjective entity);
 }

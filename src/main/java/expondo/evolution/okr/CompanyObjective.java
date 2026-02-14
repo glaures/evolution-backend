@@ -1,9 +1,7 @@
 package expondo.evolution.okr;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+import lombok.*;
 import org.hibernate.envers.Audited;
 
 import java.util.ArrayList;
@@ -12,7 +10,8 @@ import java.util.List;
 @Entity
 @Table(name = "company_objectives")
 @Audited
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class CompanyObjective {

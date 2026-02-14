@@ -5,6 +5,7 @@ import expondo.evolution.config.dto.AuditRevisionDto;
 import expondo.evolution.okr.*;
 import expondo.evolution.planning.*;
 import expondo.evolution.user.AppUser;
+import expondo.evolution.user.Team;
 import expondo.evolution.user.Unit;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
@@ -31,17 +32,15 @@ public class AuditService {
     private static final Map<String, Class<?>> AUDITED_ENTITIES = Map.ofEntries(
             Map.entry("Cycle", Cycle.class),
             Map.entry("CompanyObjective", CompanyObjective.class),
+            Map.entry("Tactic", Tactic.class),
             Map.entry("KeyResult", KeyResult.class),
-            Map.entry("Team", Team.class),
-            Map.entry("Unit", Unit.class),
-            Map.entry("Commitment", Commitment.class),
-            Map.entry("Deliverable", Deliverable.class),
             Map.entry("Timebox", Timebox.class),
             Map.entry("TimeboxReport", TimeboxReport.class),
             Map.entry("TimeboxEffort", TimeboxEffort.class),
             Map.entry("TimeboxDelivery", TimeboxDelivery.class),
-            Map.entry("AppUser", AppUser.class),
-            Map.entry("Tactic", Tactic.class)
+            Map.entry("Team", Team.class),
+            Map.entry("Unit", Unit.class),
+            Map.entry("AppUser", AppUser.class)
     );
 
     public List<AuditRevisionDto> getRevisions(String entityType, String userEmail,

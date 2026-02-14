@@ -1,9 +1,8 @@
-package expondo.evolution.planning;
+package expondo.evolution.user;
 
+import expondo.evolution.planning.TimeboxReport;
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+import lombok.*;
 import org.hibernate.envers.Audited;
 
 import java.util.ArrayList;
@@ -11,7 +10,8 @@ import java.util.List;
 
 @Entity
 @Table(name = "teams")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Audited
@@ -25,10 +25,13 @@ public class Team {
     private String name;
 
     @Column(nullable = false)
-    private Integer engineerCount;
+    private Integer memberCount;
 
-    @OneToMany(mappedBy = "team", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Commitment> commitments = new ArrayList<>();
+    /**
+     * Hex color code for charts and reports (e.g., "#4A90D9").
+     */
+    @Column(length = 7)
+    private String color;
 
     @OneToMany(mappedBy = "team", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TimeboxReport> timeboxReports = new ArrayList<>();

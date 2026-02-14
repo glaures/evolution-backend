@@ -2,9 +2,7 @@ package expondo.evolution.okr;
 
 import expondo.evolution.planning.Timebox;
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+import lombok.*;
 import org.hibernate.envers.Audited;
 
 import java.time.LocalDate;
@@ -13,7 +11,8 @@ import java.util.List;
 
 @Entity
 @Table(name = "cycles")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Audited
@@ -21,6 +20,7 @@ public class Cycle {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
     private Long id;
 
     @Column(nullable = false, unique = true)

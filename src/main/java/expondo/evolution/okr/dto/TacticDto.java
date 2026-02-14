@@ -6,7 +6,7 @@ public record TacticDto(
         String title,
         String description,
         Integer priority,
-        int baseValue,
+        int score,
         Long companyObjectiveId,
         Long responsibleUnitId,
         String responsibleUnitName

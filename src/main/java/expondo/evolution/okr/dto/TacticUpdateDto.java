@@ -5,5 +5,6 @@ public record TacticUpdateDto(
         String title,
         String description,
         Integer priority,
-        Long responsibleUnitId
+        Long responsibleUnitId,
+        Long companyObjectiveId
 ) {}

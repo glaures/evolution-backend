@@ -1,22 +1,21 @@
 package expondo.evolution.planning;
 
+import expondo.evolution.okr.Tactic;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import org.hibernate.envers.Audited;
 
-import java.math.BigDecimal;
-
 /**
- * Tracks delivery progress on a specific deliverable during a timebox.
- * Used for EVO calculation.
+ * Represents a release delivered during a timebox.
+ * Each release is tied to a specific tactic and earns EVO points.
  */
 @Entity
-@Table(name = "timebox_deliveries", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"timebox_report_id", "deliverable_id"})
-})
-@Data
+@Table(name = "timebox_deliveries")
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Audited
@@ -31,21 +30,24 @@ public class TimeboxDelivery {
     private TimeboxReport timeboxReport;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "deliverable_id", nullable = false)
-    private Deliverable deliverable;
+    @JoinColumn(name = "tactic_id", nullable = false)
+    private Tactic tactic;
 
     /**
-     * Delivery progress made THIS timebox (delta, not cumulative).
-     * E.g., if deliverable was 30% done and is now 50% done, this is 20.
+     * Short name/title of the release.
      */
-    @Column(nullable = false, precision = 5, scale = 2)
-    private BigDecimal progressPercentage;
+    @Column(nullable = false)
+    private String name;
 
     /**
-     * Calculate EVO points earned for this delivery.
-     * Requires the commitment's normalized value.
+     * Jira ticket ID of the release (e.g., "EVO-1234").
      */
-    public BigDecimal calculateEvoPoints(BigDecimal normalizedValue) {
-        return normalizedValue.multiply(progressPercentage).divide(BigDecimal.valueOf(100));
-    }
+    @Column
+    private String jiraId;
+
+    /**
+     * Brief description of the stakeholder-perceivable value delivered.
+     */
+    @Column(columnDefinition = "TEXT")
+    private String stakeholderValue;
 }

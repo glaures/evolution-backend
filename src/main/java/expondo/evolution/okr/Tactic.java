@@ -1,20 +1,18 @@
 package expondo.evolution.okr;
 
-import expondo.evolution.planning.Deliverable;
 import expondo.evolution.user.Unit;
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.envers.Audited;
-
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "tactics")
 @Audited
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Tactic {
@@ -34,7 +32,7 @@ public class Tactic {
 
     /**
      * Priority rank for EVO scoring.
-     * Rank 1-4: 1000 points, Rank 5: 700, Rank 6: 600, etc.
+     * Rank 1-4: 10 points, 5: 7, 6: 6, 7: 5, 8: 4, 9: 3, 10: 2, 11+: 1
      */
     @Column
     private Integer priority;
@@ -47,21 +45,14 @@ public class Tactic {
     @JoinColumn(name = "responsible_unit_id")
     private Unit responsibleUnit;
 
-    @OneToMany(mappedBy = "tactic", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Deliverable> deliverables = new ArrayList<>();
-
     /**
-     * Calculate base value from priority rank.
-     * Rank 1-4: 1000 points each
-     * Rank 5: 700
-     * Rank 6: 600
-     * Rank 7: 500
-     * ... decreasing by 100, minimum 100
+     * EVO score based on priority rank.
+     * Rank 1-4: 10 points, 5-9: 7 points, 10+: 5 points
      */
-    public int getBaseValue() {
+    public int getScore() {
         if (priority == null) return 0;
-        if (priority <= 4) return 1000;
-        int value = 700 - ((priority - 5) * 100);
-        return Math.max(value, 100);
+        if (priority <= 4) return 10;
+        if (priority <= 9) return 7;
+        return 5;
     }
 }

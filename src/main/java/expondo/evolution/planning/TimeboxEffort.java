@@ -1,7 +1,9 @@
 package expondo.evolution.planning;
 
+import expondo.evolution.okr.Tactic;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import org.hibernate.envers.Audited;
@@ -9,14 +11,15 @@ import org.hibernate.envers.Audited;
 import java.math.BigDecimal;
 
 /**
- * Tracks effort spent on a specific deliverable during a timebox.
+ * Tracks effort spent on a specific tactic during a timebox.
  * Used for BSI calculation and to see total investment per strategic item.
  */
 @Entity
 @Table(name = "timebox_efforts", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"timebox_report_id", "deliverable_id"})
+    @UniqueConstraint(columnNames = {"timebox_report_id", "tactic_id"})
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Audited
@@ -31,11 +34,11 @@ public class TimeboxEffort {
     private TimeboxReport timeboxReport;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "deliverable_id", nullable = false)
-    private Deliverable deliverable;
+    @JoinColumn(name = "tactic_id", nullable = false)
+    private Tactic tactic;
 
     /**
-     * Percentage of total team effort spent on this deliverable (0-100).
+     * Percentage of total team effort spent on this tactic (0-100).
      * Sum of all TimeboxEfforts for a report should equal the BSI.
      */
     @Column(nullable = false, precision = 5, scale = 2)

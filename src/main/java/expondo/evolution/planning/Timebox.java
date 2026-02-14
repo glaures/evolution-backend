@@ -2,7 +2,8 @@ package expondo.evolution.planning;
 
 import expondo.evolution.okr.Cycle;
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import org.hibernate.envers.Audited;
@@ -13,7 +14,8 @@ import java.util.List;
 
 @Entity
 @Table(name = "timeboxes")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Audited
@@ -38,6 +40,12 @@ public class Timebox {
 
     @Column(nullable = false)
     private LocalDate endDate;
+
+    /**
+     * When closed, teams can no longer submit or edit reports for this timebox.
+     */
+    @Column(nullable = false)
+    private boolean closed = false;
 
     @OneToMany(mappedBy = "timebox", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TimeboxReport> timeboxReports = new ArrayList<>();
