@@ -1,5 +1,6 @@
 package expondo.evolution.okr;
 
+import expondo.evolution.okr.dto.TacticActivityDto;
 import expondo.evolution.okr.dto.TacticCreateDto;
 import expondo.evolution.okr.dto.TacticDto;
 import expondo.evolution.okr.dto.TacticUpdateDto;
@@ -56,5 +57,14 @@ public class TacticController {
     @PreAuthorize("hasRole('ADMIN')")
     public List<TacticDto> reorder(@PathVariable Long cycleId, @RequestBody List<Long> tacticIds) {
         return tacticService.reorder(cycleId, tacticIds);
+    }
+
+    /**
+     * Get activity data (releases and efforts) for a specific tactic.
+     * Loaded on demand when expanding a tactic in the objectives overview.
+     */
+    @GetMapping("/api/tactics/{tacticId}/activity")
+    public TacticActivityDto getActivity(@PathVariable Long tacticId) {
+        return tacticService.getActivity(tacticId);
     }
 }

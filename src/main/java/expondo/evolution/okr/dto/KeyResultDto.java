@@ -5,5 +5,8 @@ public record KeyResultDto(
         String code,
         String name,
         String description,
+        String notes,
+        boolean achieved,
+        boolean impacted,
         Long companyObjectiveId
 ) {}

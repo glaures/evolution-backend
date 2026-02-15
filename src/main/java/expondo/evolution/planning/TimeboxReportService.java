@@ -1,5 +1,7 @@
 package expondo.evolution.planning;
 
+import expondo.evolution.okr.KeyResult;
+import expondo.evolution.okr.KeyResultRepository;
 import expondo.evolution.okr.Tactic;
 import expondo.evolution.okr.TacticRepository;
 import expondo.evolution.planning.dto.TimeboxReportDto;
@@ -21,6 +23,7 @@ public class TimeboxReportService {
     private final TimeboxRepository timeboxRepository;
     private final TeamRepository teamRepository;
     private final TacticRepository tacticRepository;
+    private final KeyResultRepository keyResultRepository;
 
     public Optional<TimeboxReportDto> findByTeamAndTimebox(Long teamId, Long timeboxId) {
         return reportRepository.findByTeamIdAndTimeboxId(teamId, timeboxId)
@@ -77,7 +80,7 @@ public class TimeboxReportService {
             }
         }
 
-        // Replace deliveries
+        // Replace deliveries (including KR impacts)
         report.getDeliveries().clear();
         if (dto.deliveries() != null) {
             for (TimeboxReportSaveDto.DeliveryEntry entry : dto.deliveries()) {
@@ -88,8 +91,23 @@ public class TimeboxReportService {
                 delivery.setTimeboxReport(report);
                 delivery.setTactic(tactic);
                 delivery.setName(entry.name());
-                delivery.setJiraId(entry.jiraId());
+                delivery.setReleaseLink(entry.releaseLink());
                 delivery.setStakeholderValue(entry.stakeholderValue());
+
+                // Add Key Result impacts
+                if (entry.keyResultImpacts() != null) {
+                    for (TimeboxReportSaveDto.KeyResultImpactEntry impactEntry : entry.keyResultImpacts()) {
+                        KeyResult keyResult = keyResultRepository.findById(impactEntry.keyResultId())
+                                .orElseThrow(() -> new RuntimeException("KeyResult not found: " + impactEntry.keyResultId()));
+
+                        DeliveryKeyResultImpact impact = new DeliveryKeyResultImpact();
+                        impact.setTimeboxDelivery(delivery);
+                        impact.setKeyResult(keyResult);
+                        impact.setImpactType(DeliveryKeyResultImpact.ImpactType.valueOf(impactEntry.impactType()));
+                        delivery.getKeyResultImpacts().add(impact);
+                    }
+                }
+
                 report.getDeliveries().add(delivery);
             }
         }
@@ -120,17 +138,30 @@ public class TimeboxReportService {
                 .toList();
 
         List<TimeboxReportDto.DeliveryDto> deliveries = report.getDeliveries().stream()
-                .map(d -> new TimeboxReportDto.DeliveryDto(
-                        d.getId(),
-                        d.getTactic().getId(),
-                        d.getTactic().getCode(),
-                        d.getTactic().getTitle(),
-                        d.getTactic().getPriority(),
-                        d.getTactic().getScore(),
-                        d.getName(),
-                        d.getJiraId(),
-                        d.getStakeholderValue()
-                ))
+                .map(d -> {
+                    List<TimeboxReportDto.KeyResultImpactDto> impacts = d.getKeyResultImpacts().stream()
+                            .map(impact -> new TimeboxReportDto.KeyResultImpactDto(
+                                    impact.getId(),
+                                    impact.getKeyResult().getId(),
+                                    impact.getKeyResult().getCode(),
+                                    impact.getKeyResult().getName(),
+                                    impact.getImpactType().name()
+                            ))
+                            .toList();
+
+                    return new TimeboxReportDto.DeliveryDto(
+                            d.getId(),
+                            d.getTactic().getId(),
+                            d.getTactic().getCode(),
+                            d.getTactic().getTitle(),
+                            d.getTactic().getPriority(),
+                            d.getTactic().getScore(),
+                            d.getName(),
+                            d.getReleaseLink(),
+                            d.getStakeholderValue(),
+                            impacts
+                    );
+                })
                 .toList();
 
         return new TimeboxReportDto(

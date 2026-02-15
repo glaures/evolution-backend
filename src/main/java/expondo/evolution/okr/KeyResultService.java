@@ -1,8 +1,8 @@
 package expondo.evolution.okr;
 
-import expondo.evolution.okr.dto.KeyResultCreateDto;
 import expondo.evolution.okr.dto.KeyResultDto;
-import expondo.evolution.okr.dto.KeyResultUpdateDto;
+import expondo.evolution.okr.dto.KeyResultReferenceDto;
+import expondo.evolution.okr.dto.KeyResultSaveDto;
 import expondo.evolution.okr.mapper.KeyResultMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,48 +15,56 @@ import java.util.List;
 public class KeyResultService {
 
     private final KeyResultRepository keyResultRepository;
-    private final CompanyObjectiveRepository objectiveRepository;
     private final KeyResultMapper keyResultMapper;
 
-    public List<KeyResultDto> findByObjectiveId(Long objectiveId) {
-        return keyResultRepository.findByCompanyObjectiveIdOrderByCodeAsc(objectiveId).stream()
-                .map(keyResultMapper::toDto)
+    /**
+     * Get all Key Results for a cycle as lightweight reference data.
+     * Used by the timebox report form to populate the KR impact selector.
+     */
+    public List<KeyResultReferenceDto> findReferenceByCycleId(Long cycleId) {
+        return keyResultRepository.findByCycleId(cycleId).stream()
+                .map(kr -> new KeyResultReferenceDto(
+                        kr.getId(),
+                        kr.getCode(),
+                        kr.getName(),
+                        kr.getCompanyObjective().getId(),
+                        kr.getCompanyObjective().getName()
+                ))
                 .toList();
     }
 
-    public KeyResultDto findById(Long id) {
-        return keyResultRepository.findById(id)
-                .map(keyResultMapper::toDto)
-                .orElseThrow(() -> new RuntimeException("Key Result not found: " + id));
+    @Transactional
+    public KeyResultDto create(CompanyObjective objective, KeyResultSaveDto dto) {
+        KeyResult kr = new KeyResult();
+        kr.setCompanyObjective(objective);
+        kr.setCode(generateCode(objective));
+        kr.setName(dto.name());
+        kr.setDescription(dto.description());
+        kr.setNotes(dto.notes());
+        return keyResultMapper.toDto(keyResultRepository.save(kr));
     }
 
     @Transactional
-    public KeyResultDto create(Long objectiveId, KeyResultCreateDto dto) {
-        CompanyObjective objective = objectiveRepository.findById(objectiveId)
-                .orElseThrow(() -> new RuntimeException("Objective not found: " + objectiveId));
-
-        KeyResult keyResult = keyResultMapper.toEntity(dto);
-        keyResult.setCompanyObjective(objective);
-
-        long count = keyResultRepository.findByCompanyObjectiveIdOrderByCodeAsc(objectiveId).size();
-        keyResult.setCode(objective.getCode() + ".KR" + (count + 1));
-
-        return keyResultMapper.toDto(keyResultRepository.save(keyResult));
-    }
-
-    @Transactional
-    public KeyResultDto update(Long id, KeyResultUpdateDto dto) {
-        KeyResult keyResult = keyResultRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Key Result not found: " + id));
-        keyResultMapper.updateEntity(dto, keyResult);
-        return keyResultMapper.toDto(keyResultRepository.save(keyResult));
+    public KeyResultDto update(Long id, KeyResultSaveDto dto) {
+        KeyResult kr = keyResultRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("KeyResult not found: " + id));
+        kr.setName(dto.name());
+        kr.setDescription(dto.description());
+        kr.setNotes(dto.notes());
+        return keyResultMapper.toDto(keyResultRepository.save(kr));
     }
 
     @Transactional
     public void delete(Long id) {
         if (!keyResultRepository.existsById(id)) {
-            throw new RuntimeException("Key Result not found: " + id);
+            throw new RuntimeException("KeyResult not found: " + id);
         }
         keyResultRepository.deleteById(id);
+    }
+
+    private String generateCode(CompanyObjective objective) {
+        String objectiveNum = objective.getCode().replaceAll("[^0-9]", "");
+        long count = keyResultRepository.findByCompanyObjectiveId(objective.getId()).size();
+        return "KR" + objectiveNum + "." + (count + 1);
     }
 }

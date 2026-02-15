@@ -1,26 +1,38 @@
 package expondo.evolution.okr.mapper;
 
 import expondo.evolution.okr.KeyResult;
-import expondo.evolution.okr.dto.KeyResultCreateDto;
 import expondo.evolution.okr.dto.KeyResultDto;
-import expondo.evolution.okr.dto.KeyResultUpdateDto;
+import expondo.evolution.planning.DeliveryKeyResultImpact;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
 
 @Mapper(componentModel = "spring")
 public interface KeyResultMapper {
 
-    @Mapping(target = "companyObjectiveId", source = "companyObjective.id")
-    KeyResultDto toDto(KeyResult entity);
+    /**
+     * MapStruct cannot derive 'achieved' and 'impacted' automatically since they
+     * are computed from the deliveryImpacts collection. We use a default method
+     * to handle this, delegating simple field mapping to a named internal method.
+     */
+    default KeyResultDto toDto(KeyResult entity) {
+        if (entity == null) return null;
 
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "code", ignore = true)
-    @Mapping(target = "companyObjective", ignore = true)
-    KeyResult toEntity(KeyResultCreateDto dto);
+        boolean achieved = entity.getDeliveryImpacts() != null &&
+                entity.getDeliveryImpacts().stream()
+                        .anyMatch(i -> i.getImpactType() == DeliveryKeyResultImpact.ImpactType.ACHIEVES);
 
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "companyObjective", ignore = true)
-    @Mapping(target = "code", ignore = true)
-    void updateEntity(KeyResultUpdateDto dto, @MappingTarget KeyResult entity);
+        boolean impacted = entity.getDeliveryImpacts() != null &&
+                !entity.getDeliveryImpacts().isEmpty();
+
+        return new KeyResultDto(
+                entity.getId(),
+                entity.getCode(),
+                entity.getName(),
+                entity.getDescription(),
+                entity.getNotes(),
+                achieved,
+                impacted,
+                entity.getCompanyObjective().getId()
+        );
+    }
 }

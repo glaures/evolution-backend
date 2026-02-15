@@ -32,7 +32,19 @@ public record TimeboxReportDto(
             Integer tacticPriority,
             Integer tacticScore,
             String name,
-            String jiraId,
-            String stakeholderValue
+            String releaseLink,
+            String stakeholderValue,
+            List<KeyResultImpactDto> keyResultImpacts
+    ) {}
+
+    /**
+     * Read-only representation of a KR impact linked to a delivery.
+     */
+    public record KeyResultImpactDto(
+            Long id,
+            Long keyResultId,
+            String keyResultCode,
+            String keyResultName,
+            String impactType // "IMPACTS" or "ACHIEVES"
     ) {}
 }

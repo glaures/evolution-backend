@@ -11,8 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -154,21 +152,16 @@ public class ReportingService {
     }
 
     private List<TacticInvestment> buildTacticInvestments(List<TimeboxReport> allReports) {
-        // tacticId -> (teamId -> accumulated person days)
         Map<Long, TacticAccumulator> accumulator = new LinkedHashMap<>();
 
         for (TimeboxReport report : allReports) {
-            int workingDays = countWorkingDays(
-                    report.getTimebox().getStartDate(),
-                    report.getTimebox().getEndDate()
-            );
-            int memberCount = report.getTeam().getMemberCount();
-            BigDecimal availableDays = BigDecimal.valueOf((long) workingDays * memberCount);
-
             for (TimeboxEffort effort : report.getEfforts()) {
-                BigDecimal personDays = availableDays
-                        .multiply(effort.getEffortPercentage())
-                        .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                BigDecimal personDays = PersonDaysCalculator.calculate(
+                        report.getTimebox().getStartDate(),
+                        report.getTimebox().getEndDate(),
+                        report.getTeam().getMemberCount(),
+                        effort.getEffortPercentage()
+                );
 
                 accumulator.computeIfAbsent(effort.getTactic().getId(), id -> new TacticAccumulator(
                         effort.getTactic().getId(),
@@ -188,19 +181,6 @@ public class ReportingService {
                 .map(TacticAccumulator::toInvestment)
                 .sorted(Comparator.comparing(TacticInvestment::tacticPriority, Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
-    }
-
-    private int countWorkingDays(LocalDate start, LocalDate end) {
-        int count = 0;
-        LocalDate current = start;
-        while (!current.isAfter(end)) {
-            DayOfWeek day = current.getDayOfWeek();
-            if (day != DayOfWeek.SATURDAY && day != DayOfWeek.SUNDAY) {
-                count++;
-            }
-            current = current.plusDays(1);
-        }
-        return count;
     }
 
     private static class TacticAccumulator {

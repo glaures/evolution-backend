@@ -3,6 +3,7 @@ package expondo.evolution.planning;
 import expondo.evolution.planning.dto.TimeboxReportDto;
 import expondo.evolution.planning.dto.TimeboxReportSaveDto;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -51,12 +52,12 @@ public class TimeboxReportController {
     /**
      * Close or reopen a timebox (admin only).
      */
-    @PatchMapping("/timeboxes/{timeboxId}/closed")
+    @PutMapping("/timeboxes/{timeboxId}/closed")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> setTimeboxClosed(
+    public void setTimeboxClosed(
             @PathVariable Long timeboxId,
             @RequestBody Map<String, Boolean> body) {
         reportService.setTimeboxClosed(timeboxId, body.getOrDefault("closed", true));
-        return ResponseEntity.ok().build();
     }
 }

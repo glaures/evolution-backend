@@ -8,9 +8,13 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import org.hibernate.envers.Audited;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Represents a release delivered during a timebox.
  * Each release is tied to a specific tactic and earns EVO points.
+ * Releases can optionally be linked to Key Results they impact or achieve.
  */
 @Entity
 @Table(name = "timebox_deliveries")
@@ -40,14 +44,20 @@ public class TimeboxDelivery {
     private String name;
 
     /**
-     * Jira ticket ID of the release (e.g., "EVO-1234").
+     * Link to external documentation of the release (e.g., Jira ticket, Confluence page, GitHub release).
      */
     @Column
-    private String jiraId;
+    private String releaseLink;
 
     /**
      * Brief description of the stakeholder-perceivable value delivered.
      */
     @Column(columnDefinition = "TEXT")
     private String stakeholderValue;
+
+    /**
+     * Key Results impacted or achieved by this release.
+     */
+    @OneToMany(mappedBy = "timeboxDelivery", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DeliveryKeyResultImpact> keyResultImpacts = new ArrayList<>();
 }

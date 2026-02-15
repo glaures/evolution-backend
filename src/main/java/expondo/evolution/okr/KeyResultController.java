@@ -1,8 +1,8 @@
 package expondo.evolution.okr;
 
-import expondo.evolution.okr.dto.KeyResultCreateDto;
 import expondo.evolution.okr.dto.KeyResultDto;
-import expondo.evolution.okr.dto.KeyResultUpdateDto;
+import expondo.evolution.okr.dto.KeyResultReferenceDto;
+import expondo.evolution.okr.dto.KeyResultSaveDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -11,41 +11,51 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/objectives/{objectiveId}/key-results")
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class KeyResultController {
 
     private final KeyResultService keyResultService;
+    private final CompanyObjectiveRepository objectiveRepository;
 
-    @GetMapping
-    public List<KeyResultDto> findByObjective(@PathVariable Long objectiveId) {
-        return keyResultService.findByObjectiveId(objectiveId);
+    /**
+     * Get all Key Results for a cycle as reference data.
+     * Used by timebox report form for the KR impact selector.
+     */
+    @GetMapping("/cycles/{cycleId}/key-results")
+    public List<KeyResultReferenceDto> findByCycle(@PathVariable Long cycleId) {
+        return keyResultService.findReferenceByCycleId(cycleId);
     }
 
-    @GetMapping("/{id}")
-    public KeyResultDto findById(@PathVariable Long id) {
-        return keyResultService.findById(id);
-    }
-
-    @PostMapping
+    /**
+     * Create a new Key Result under an objective.
+     */
+    @PostMapping("/objectives/{objectiveId}/key-results")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('ADMIN')")
-    public KeyResultDto create(@PathVariable Long objectiveId,
-                               @RequestBody KeyResultCreateDto dto) {
-        return keyResultService.create(objectiveId, dto);
+    public KeyResultDto create(@PathVariable Long objectiveId, @RequestBody KeyResultSaveDto dto) {
+        CompanyObjective objective = objectiveRepository.findById(objectiveId)
+                .orElseThrow(() -> new RuntimeException("Objective not found: " + objectiveId));
+        return keyResultService.create(objective, dto);
     }
 
-    @PutMapping("/{id}")
+    /**
+     * Update a Key Result.
+     */
+    @PutMapping("/objectives/{objectiveId}/key-results/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public KeyResultDto update(@PathVariable Long id,
-                               @RequestBody KeyResultUpdateDto dto) {
+    public KeyResultDto update(@PathVariable Long objectiveId, @PathVariable Long id,
+                               @RequestBody KeyResultSaveDto dto) {
         return keyResultService.update(id, dto);
     }
 
-    @DeleteMapping("/{id}")
+    /**
+     * Delete a Key Result.
+     */
+    @DeleteMapping("/objectives/{objectiveId}/key-results/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasRole('ADMIN')")
-    public void delete(@PathVariable Long id) {
+    public void delete(@PathVariable Long objectiveId, @PathVariable Long id) {
         keyResultService.delete(id);
     }
 }

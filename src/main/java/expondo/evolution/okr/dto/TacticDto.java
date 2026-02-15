@@ -9,5 +9,13 @@ public record TacticDto(
         int score,
         Long companyObjectiveId,
         Long responsibleUnitId,
-        String responsibleUnitName
+        String responsibleUnitName,
+        /**
+         * Activity indicator based on recent effort reporting.
+         * ACTIVE = effort in the latest timebox
+         * RECENT = effort in the previous timebox but not the latest
+         * DORMANT = effort reported at some point, but not recently
+         * null = no effort ever reported
+         */
+        String activityStatus
 ) {}

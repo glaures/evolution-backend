@@ -18,7 +18,16 @@ public record TimeboxReportSaveDto(
             Long id,
             Long tacticId,
             String name,
-            String jiraId,
-            String stakeholderValue
+            String releaseLink,
+            String stakeholderValue,
+            List<KeyResultImpactEntry> keyResultImpacts
+    ) {}
+
+    /**
+     * Links a delivery to a Key Result with an impact type.
+     */
+    public record KeyResultImpactEntry(
+            Long keyResultId,
+            String impactType // "IMPACTS" or "ACHIEVES"
     ) {}
 }
