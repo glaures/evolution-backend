@@ -10,11 +10,15 @@ import java.util.List;
 public record TacticActivityDto(
         Long tacticId,
         BigDecimal totalPersonDays,
-        String lastActivityTimebox,
-        String lastActivityTeam,
-        List<ReleaseEntry> releases,
-        List<EffortEntry> efforts
+        List<TeamContribution> teamContributions,
+        List<ReleaseEntry> releases
 ) {
+    public record TeamContribution(
+            String teamName,
+            String teamColor,
+            BigDecimal personDays
+    ) {}
+
     public record ReleaseEntry(
             Long id,
             Integer timeboxNumber,
@@ -27,12 +31,5 @@ public record TacticActivityDto(
             String keyResultCode,
             String keyResultName,
             String impactType
-    ) {}
-
-    public record EffortEntry(
-            Integer timeboxNumber,
-            String teamName,
-            String teamColor,
-            BigDecimal personDays
     ) {}
 }

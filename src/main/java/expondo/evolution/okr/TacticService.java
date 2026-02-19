@@ -17,7 +17,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -117,9 +120,9 @@ public class TacticService {
     }
 
     /**
-     * Get activity data (releases and efforts) for a tactic.
+     * Get activity data (releases and team contributions) for a tactic.
      * Loaded on demand when a user expands a tactic in the objectives overview.
-     * Efforts are converted to person days using the same calculation as the reporting dashboard.
+     * Efforts are aggregated per team across all timeboxes and converted to person days.
      */
     @Transactional(readOnly = true)
     public TacticActivityDto getActivity(Long tacticId) {
@@ -142,44 +145,46 @@ public class TacticService {
                 ))
                 .toList();
 
-        List<TacticActivityDto.EffortEntry> effortEntries = efforts.stream()
-                .map(e -> {
-                    BigDecimal personDays = PersonDaysCalculator.calculate(
-                            e.getTimeboxReport().getTimebox().getStartDate(),
-                            e.getTimeboxReport().getTimebox().getEndDate(),
-                            e.getTimeboxReport().getTeam().getMemberCount(),
-                            e.getEffortPercentage()
-                    );
-                    return new TacticActivityDto.EffortEntry(
-                            e.getTimeboxReport().getTimebox().getNumber(),
-                            e.getTimeboxReport().getTeam().getName(),
-                            e.getTimeboxReport().getTeam().getColor(),
-                            personDays
-                    );
-                })
-                .toList();
-
-        BigDecimal totalPersonDays = effortEntries.stream()
-                .map(TacticActivityDto.EffortEntry::personDays)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        // Last activity: most recent effort entry (already sorted by timebox number ASC)
-        String lastTimebox = null;
-        String lastTeam = null;
-        if (!efforts.isEmpty()) {
-            TimeboxEffort last = efforts.getLast();
-            lastTimebox = "Timebox " + last.getTimeboxReport().getTimebox().getNumber();
-            lastTeam = last.getTimeboxReport().getTeam().getName();
+        // Aggregate person days per team
+        Map<String, TeamAccumulator> teamMap = new LinkedHashMap<>();
+        for (TimeboxEffort e : efforts) {
+            BigDecimal personDays = PersonDaysCalculator.calculate(
+                    e.getTimeboxReport().getTimebox().getStartDate(),
+                    e.getTimeboxReport().getTimebox().getEndDate(),
+                    e.getTimeboxReport().getTeam().getMemberCount(),
+                    e.getEffortPercentage()
+            );
+            String teamName = e.getTimeboxReport().getTeam().getName();
+            teamMap.computeIfAbsent(teamName, k -> new TeamAccumulator(
+                    teamName, e.getTimeboxReport().getTeam().getColor()
+            )).add(personDays);
         }
 
-        return new TacticActivityDto(
-                tacticId,
-                totalPersonDays,
-                lastTimebox,
-                lastTeam,
-                releaseEntries,
-                effortEntries
-        );
+        List<TacticActivityDto.TeamContribution> contributions = teamMap.values().stream()
+                .map(a -> new TacticActivityDto.TeamContribution(a.name, a.color, a.personDays))
+                .sorted(Comparator.comparing(TacticActivityDto.TeamContribution::personDays).reversed())
+                .toList();
+
+        BigDecimal totalPersonDays = contributions.stream()
+                .map(TacticActivityDto.TeamContribution::personDays)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return new TacticActivityDto(tacticId, totalPersonDays, contributions, releaseEntries);
+    }
+
+    private static class TeamAccumulator {
+        final String name;
+        final String color;
+        BigDecimal personDays = BigDecimal.ZERO;
+
+        TeamAccumulator(String name, String color) {
+            this.name = name;
+            this.color = color;
+        }
+
+        void add(BigDecimal days) {
+            this.personDays = this.personDays.add(days);
+        }
     }
 
     /**
