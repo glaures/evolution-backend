@@ -30,7 +30,7 @@ spring:
 
 evolution:
   auto-admins: ${AUTO_ADMIN_EMAILS:}
-  cors-origins: ${CORS_ORIGINS:http://localhost:3000}
+  cors-origins: ${CORS_ORIGINS}
 
 server:
   port: 8080
