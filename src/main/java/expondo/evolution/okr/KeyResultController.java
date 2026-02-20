@@ -23,6 +23,7 @@ public class KeyResultController {
      * Used by timebox report form for the KR impact selector.
      */
     @GetMapping("/cycles/{cycleId}/key-results")
+    @PreAuthorize("hasRole('USER')")
     public List<KeyResultReferenceDto> findByCycle(@PathVariable Long cycleId) {
         return keyResultService.findReferenceByCycleId(cycleId);
     }
@@ -32,7 +33,7 @@ public class KeyResultController {
      */
     @PostMapping("/objectives/{objectiveId}/key-results")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER')")
     public KeyResultDto create(@PathVariable Long objectiveId, @RequestBody KeyResultSaveDto dto) {
         CompanyObjective objective = objectiveRepository.findById(objectiveId)
                 .orElseThrow(() -> new RuntimeException("Objective not found: " + objectiveId));
@@ -43,7 +44,7 @@ public class KeyResultController {
      * Update a Key Result.
      */
     @PutMapping("/objectives/{objectiveId}/key-results/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER')")
     public KeyResultDto update(@PathVariable Long objectiveId, @PathVariable Long id,
                                @RequestBody KeyResultSaveDto dto) {
         return keyResultService.update(id, dto);
@@ -54,7 +55,7 @@ public class KeyResultController {
      */
     @DeleteMapping("/objectives/{objectiveId}/key-results/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER')")
     public void delete(@PathVariable Long objectiveId, @PathVariable Long id) {
         keyResultService.delete(id);
     }

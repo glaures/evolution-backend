@@ -17,25 +17,27 @@ public class TacticController {
     private final TacticService tacticService;
 
     @GetMapping("/api/objectives/{objectiveId}/tactics")
+    @PreAuthorize("hasRole('USER')")
     public List<TacticDto> findByObjective(@PathVariable Long objectiveId) {
         return tacticService.findByObjectiveId(objectiveId);
     }
 
     @GetMapping("/api/objectives/{objectiveId}/tactics/{id}")
+    @PreAuthorize("hasRole('USER')")
     public TacticDto findById(@PathVariable Long id) {
         return tacticService.findById(id);
     }
 
     @PostMapping("/api/objectives/{objectiveId}/tactics")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER')")
     public TacticDto create(@PathVariable Long objectiveId,
                             @RequestBody TacticCreateDto dto) {
         return tacticService.create(objectiveId, dto);
     }
 
     @PutMapping("/api/objectives/{objectiveId}/tactics/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER')")
     public TacticDto update(@PathVariable Long id,
                             @RequestBody TacticUpdateDto dto) {
         return tacticService.update(id, dto);
@@ -43,18 +45,19 @@ public class TacticController {
 
     @DeleteMapping("/api/objectives/{objectiveId}/tactics/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER')")
     public void delete(@PathVariable Long id) {
         tacticService.delete(id);
     }
 
     @GetMapping("/api/cycles/{cycleId}/tactics")
+    @PreAuthorize("hasRole('USER')")
     public List<TacticDto> findByCycle(@PathVariable Long cycleId) {
         return tacticService.findByCycleId(cycleId);
     }
 
     @PutMapping("/api/cycles/{cycleId}/tactics/reorder")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER')")
     public List<TacticDto> reorder(@PathVariable Long cycleId, @RequestBody List<Long> tacticIds) {
         return tacticService.reorder(cycleId, tacticIds);
     }
@@ -64,6 +67,7 @@ public class TacticController {
      * Loaded on demand when expanding a tactic in the objectives overview.
      */
     @GetMapping("/api/tactics/{tacticId}/activity")
+    @PreAuthorize("hasRole('USER')")
     public TacticActivityDto getActivity(@PathVariable Long tacticId) {
         return tacticService.getActivity(tacticId);
     }

@@ -18,6 +18,7 @@ public class TeamController {
     private final TeamService teamService;
 
     @GetMapping
+    @PreAuthorize("hasRole('USER')")
     public List<TeamDto> findAll() {
         return teamService.findAll();
     }

@@ -18,25 +18,27 @@ public class CompanyObjectiveController {
     private final CompanyObjectiveService objectiveService;
 
     @GetMapping
+    @PreAuthorize("hasRole('USER')")
     public List<CompanyObjectiveDto> findByCycle(@PathVariable Long cycleId) {
         return objectiveService.findByCycleId(cycleId);
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('USER')")
     public CompanyObjectiveDto findById(@PathVariable Long id) {
         return objectiveService.findById(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER')")
     public CompanyObjectiveDto create(@PathVariable Long cycleId,
                                       @RequestBody CompanyObjectiveCreateDto dto) {
         return objectiveService.create(cycleId, dto);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER')")
     public CompanyObjectiveDto update(@PathVariable Long id,
                                       @RequestBody CompanyObjectiveUpdateDto dto) {
         return objectiveService.update(id, dto);
@@ -44,7 +46,7 @@ public class CompanyObjectiveController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('USER')")
     public void delete(@PathVariable Long id) {
         objectiveService.delete(id);
     }

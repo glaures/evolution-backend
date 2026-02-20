@@ -22,6 +22,7 @@ public class TimeboxReportController {
      * Get a specific report for a team and timebox.
      */
     @GetMapping("/teams/{teamId}/timeboxes/{timeboxId}/report")
+    @PreAuthorize("hasRole('IT_MEMBER')")
     public ResponseEntity<TimeboxReportDto> getReport(
             @PathVariable Long teamId,
             @PathVariable Long timeboxId) {
@@ -34,6 +35,7 @@ public class TimeboxReportController {
      * Get all reports for a timebox.
      */
     @GetMapping("/timeboxes/{timeboxId}/reports")
+    @PreAuthorize("hasRole('IT_MEMBER')")
     public List<TimeboxReportDto> getReportsByTimebox(@PathVariable Long timeboxId) {
         return reportService.findByTimebox(timeboxId);
     }
@@ -42,6 +44,7 @@ public class TimeboxReportController {
      * Save or update a report for a team and timebox.
      */
     @PutMapping("/teams/{teamId}/timeboxes/{timeboxId}/report")
+    @PreAuthorize("hasRole('IT_MEMBER')")
     public TimeboxReportDto saveReport(
             @PathVariable Long teamId,
             @PathVariable Long timeboxId,

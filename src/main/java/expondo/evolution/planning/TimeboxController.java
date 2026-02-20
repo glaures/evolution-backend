@@ -18,6 +18,7 @@ public class TimeboxController {
     private final TimeboxService timeboxService;
 
     @GetMapping
+    @PreAuthorize("hasRole('USER')")
     public List<TimeboxDto> findByCycle(@PathVariable Long cycleId) {
         return timeboxService.findByCycleId(cycleId);
     }

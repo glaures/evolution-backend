@@ -18,6 +18,7 @@ public class UnitController {
     private final UnitService unitService;
 
     @GetMapping
+    @PreAuthorize("hasRole('USER')")
     public List<UnitDto> findAll() {
         return unitService.findAll();
     }

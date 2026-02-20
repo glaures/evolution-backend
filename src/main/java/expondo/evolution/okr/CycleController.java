@@ -18,11 +18,13 @@ public class CycleController {
     private final CycleService cycleService;
 
     @GetMapping
+    @PreAuthorize("hasRole('USER')")
     public List<CycleDto> findAll() {
         return cycleService.findAll();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('USER')")
     public CycleDto findById(@PathVariable Long id) {
         return cycleService.findById(id);
     }
