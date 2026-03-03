@@ -50,7 +50,7 @@ public class UserService {
                         newUser.setRoles(Set.of(AppRole.ADMIN, AppRole.USER));
                     } else {
                         newUser.setEnabled(true);
-                        newUser.setRoles(Set.of(AppRole.USER));
+                        newUser.setRoles(Set.of(AppRole.USER, AppRole.IT_MEMBER));
                     }
 
                     return userRepository.save(newUser);
