@@ -132,6 +132,8 @@ public class TacticService {
         List<TacticActivityDto.ReleaseEntry> releaseEntries = deliveries.stream()
                 .map(d -> new TacticActivityDto.ReleaseEntry(
                         d.getId(),
+                        d.getName(),
+                        d.getReleaseLink(),
                         d.getTimeboxReport().getTimebox().getNumber(),
                         d.getTimeboxReport().getTeam().getName(),
                         d.getTimeboxReport().getTeam().getColor(),

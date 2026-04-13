@@ -21,6 +21,8 @@ public record TacticActivityDto(
 
     public record ReleaseEntry(
             Long id,
+            String name,
+            String releaseLink,
             Integer timeboxNumber,
             String teamName,
             String teamColor,
