@@ -58,15 +58,19 @@ public class TimeboxReportService {
                     TimeboxReport newReport = new TimeboxReport();
                     newReport.setTeam(team);
                     newReport.setTimebox(timebox);
-                    return newReport;
+                    return reportRepository.save(newReport);
                 });
 
         // Update effort distribution
         report.setEffortMaintenance(dto.effortMaintenance());
         report.setEffortAdministration(dto.effortAdministration());
 
-        // Replace efforts
+        // Clear old children and FLUSH so DELETEs are executed before new INSERTs
         report.getEfforts().clear();
+        report.getDeliveries().clear();
+        reportRepository.saveAndFlush(report);
+
+        // Now add new efforts
         if (dto.efforts() != null) {
             for (TimeboxReportSaveDto.EffortEntry entry : dto.efforts()) {
                 Tactic tactic = tacticRepository.findById(entry.tacticId())
@@ -80,8 +84,7 @@ public class TimeboxReportService {
             }
         }
 
-        // Replace deliveries (including KR impacts)
-        report.getDeliveries().clear();
+        // Add new deliveries
         if (dto.deliveries() != null) {
             for (TimeboxReportSaveDto.DeliveryEntry entry : dto.deliveries()) {
                 Tactic tactic = tacticRepository.findById(entry.tacticId())
@@ -94,7 +97,6 @@ public class TimeboxReportService {
                 delivery.setReleaseLink(entry.releaseLink());
                 delivery.setStakeholderValue(entry.stakeholderValue());
 
-                // Add Key Result impacts
                 if (entry.keyResultImpacts() != null) {
                     for (TimeboxReportSaveDto.KeyResultImpactEntry impactEntry : entry.keyResultImpacts()) {
                         KeyResult keyResult = keyResultRepository.findById(impactEntry.keyResultId())
