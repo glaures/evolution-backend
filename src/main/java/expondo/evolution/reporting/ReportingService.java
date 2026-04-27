@@ -67,9 +67,18 @@ public class ReportingService {
         return new ReportingDashboardDto(summaries, currentSnapshot, orgKpis, tacticInvestments);
     }
 
+    /**
+     * EVO = sum of scores for all Tactics that had at least one release this Timebox.
+     * Multiple releases for the same Tactic in the same Timebox count only once.
+     */
     private int calculateEvo(TimeboxReport report) {
         return report.getDeliveries().stream()
-                .mapToInt(d -> d.getTactic().getScore())
+                .collect(Collectors.toMap(
+                        d -> d.getTactic().getId(),
+                        d -> d.getTactic().getScore(),
+                        (a, b) -> a))
+                .values().stream()
+                .mapToInt(Integer::intValue)
                 .sum();
     }
 
