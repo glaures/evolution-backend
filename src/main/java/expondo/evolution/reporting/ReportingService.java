@@ -6,6 +6,7 @@ import expondo.evolution.reporting.dto.ReportingDashboardDto.*;
 import expondo.evolution.user.Team;
 import expondo.evolution.user.TeamRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,6 +15,7 @@ import java.math.RoundingMode;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ReportingService {
@@ -21,6 +23,7 @@ public class ReportingService {
     private final TimeboxRepository timeboxRepository;
     private final TimeboxReportRepository reportRepository;
     private final TeamRepository teamRepository;
+    private final TimeboxTacticSnapshotRepository snapshotRepository;
 
     @Transactional(readOnly = true)
     public ReportingDashboardDto getDashboard(Long cycleId) {
@@ -68,18 +71,33 @@ public class ReportingService {
     }
 
     /**
-     * EVO = sum of scores for all Tactics that had at least one release this Timebox.
-     * Multiple releases for the same Tactic in the same Timebox count only once.
+     * EVO = sum of snapshot scores for all distinct tactics that had at least one
+     * release this timebox. Multiple releases for the same tactic in the same
+     * timebox count only once.
+     *
+     * Score is read from the priority snapshot taken at timebox start, NOT from
+     * the live tactic. This ensures historical EVOs are stable across re-prioritizations.
      */
     private int calculateEvo(TimeboxReport report) {
-        return report.getDeliveries().stream()
-                .collect(Collectors.toMap(
-                        d -> d.getTactic().getId(),
-                        d -> d.getTactic().getScore(),
-                        (a, b) -> a))
-                .values().stream()
-                .mapToInt(Integer::intValue)
-                .sum();
+        Long timeboxId = report.getTimebox().getId();
+
+        // Distinct tactics with at least one delivery
+        Set<Long> deliveredTacticIds = report.getDeliveries().stream()
+                .map(d -> d.getTactic().getId())
+                .collect(Collectors.toSet());
+
+        int total = 0;
+        for (Long tacticId : deliveredTacticIds) {
+            int score = snapshotRepository.findByTimeboxIdAndTacticId(timeboxId, tacticId)
+                    .map(TimeboxTacticSnapshot::getScoreAtOpen)
+                    .orElseGet(() -> {
+                        log.warn("Missing snapshot for timebox {} / tactic {}; counting EVO contribution as 0",
+                                timeboxId, tacticId);
+                        return 0;
+                    });
+            total += score;
+        }
+        return total;
     }
 
     private CurrentTimeboxSnapshot buildCurrentSnapshot(List<Timebox> timeboxes, List<Team> teams) {

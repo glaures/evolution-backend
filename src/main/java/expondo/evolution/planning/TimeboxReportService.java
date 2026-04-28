@@ -24,6 +24,8 @@ public class TimeboxReportService {
     private final TeamRepository teamRepository;
     private final TacticRepository tacticRepository;
     private final KeyResultRepository keyResultRepository;
+    private final TimeboxTacticSnapshotRepository snapshotRepository;
+    private final TimeboxSnapshotService snapshotService;
 
     public Optional<TimeboxReportDto> findByTeamAndTimebox(Long teamId, Long timeboxId) {
         return reportRepository.findByTeamIdAndTimeboxId(teamId, timeboxId)
@@ -40,6 +42,14 @@ public class TimeboxReportService {
      * Save or update a timebox report for a team.
      * Creates a new report if none exists, updates the existing one otherwise.
      * Throws if the timebox is closed.
+     *
+     * Lazily ensures priority snapshots exist before saving — robust against
+     * scheduler outages or timeboxes that started today but haven't been
+     * snapshotted yet.
+     *
+     * Validates that every delivered tactic has a snapshot for this timebox.
+     * Tactics added after the timebox started have no snapshot and therefore
+     * cannot earn EVO until the next timebox.
      */
     @Transactional
     public TimeboxReportDto save(Long teamId, Long timeboxId, TimeboxReportSaveDto dto) {
@@ -48,6 +58,22 @@ public class TimeboxReportService {
 
         if (timebox.isClosed()) {
             throw new IllegalStateException("Timebox " + timebox.getNumber() + " is closed. Reports can no longer be modified.");
+        }
+
+        // Lazy snapshot trigger — handles timeboxes that started today but the
+        // nightly scheduler hasn't run yet, or scheduler outages.
+        snapshotService.ensureSnapshotsExist(timebox);
+
+        // Validate that every delivered tactic was part of this timebox at start.
+        if (dto.deliveries() != null) {
+            for (TimeboxReportSaveDto.DeliveryEntry entry : dto.deliveries()) {
+                if (snapshotRepository.findByTimeboxIdAndTacticId(timeboxId, entry.tacticId()).isEmpty()) {
+                    throw new IllegalStateException(
+                            "Tactic " + entry.tacticId() + " was not part of timebox " + timebox.getNumber()
+                                    + " at its start and therefore cannot earn EVO. It will be available for the next timebox."
+                    );
+                }
+            }
         }
 
         Team team = teamRepository.findById(teamId)
@@ -129,6 +155,8 @@ public class TimeboxReportService {
     }
 
     private TimeboxReportDto toDto(TimeboxReport report) {
+        Long timeboxId = report.getTimebox().getId();
+
         List<TimeboxReportDto.EffortDto> efforts = report.getEfforts().stream()
                 .map(e -> new TimeboxReportDto.EffortDto(
                         e.getId(),
@@ -151,13 +179,23 @@ public class TimeboxReportService {
                             ))
                             .toList();
 
+                    // Read priority and score from the snapshot, falling back to
+                    // the live tactic only if no snapshot exists (shouldn't happen
+                    // for valid data, but keeps the UI from crashing).
+                    Optional<TimeboxTacticSnapshot> snap =
+                            snapshotRepository.findByTimeboxIdAndTacticId(timeboxId, d.getTactic().getId());
+                    Integer priority = snap.map(TimeboxTacticSnapshot::getPriorityAtOpen)
+                            .orElse(d.getTactic().getPriority());
+                    int score = snap.map(TimeboxTacticSnapshot::getScoreAtOpen)
+                            .orElse(d.getTactic().getScore());
+
                     return new TimeboxReportDto.DeliveryDto(
                             d.getId(),
                             d.getTactic().getId(),
                             d.getTactic().getCode(),
                             d.getTactic().getTitle(),
-                            d.getTactic().getPriority(),
-                            d.getTactic().getScore(),
+                            priority,
+                            score,
                             d.getName(),
                             d.getReleaseLink(),
                             d.getStakeholderValue(),
