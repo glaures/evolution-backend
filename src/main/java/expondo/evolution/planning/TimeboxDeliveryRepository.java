@@ -18,4 +18,6 @@ public interface TimeboxDeliveryRepository extends JpaRepository<TimeboxDelivery
         ORDER BY r.timebox.number ASC
     """)
     List<TimeboxDelivery> findByTacticIdWithDetails(Long tacticId);
+
+    boolean existsByTacticId(Long tacticId);
 }

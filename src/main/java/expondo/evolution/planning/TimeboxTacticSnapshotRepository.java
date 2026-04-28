@@ -12,4 +12,10 @@ public interface TimeboxTacticSnapshotRepository extends JpaRepository<TimeboxTa
     List<TimeboxTacticSnapshot> findByTimeboxId(Long timeboxId);
 
     boolean existsByTimeboxId(Long timeboxId);
+
+    /**
+     * Used by Tactic delete to gate hard deletion when historical snapshots
+     * still reference the tactic.
+     */
+    boolean existsByTacticId(Long tacticId);
 }

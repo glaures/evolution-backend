@@ -19,10 +19,9 @@ import java.util.List;
  * - {@link TimeboxReportService} as a lazy fallback when a report is being saved.
  * - The application startup runner for backfilling historical timeboxes.
  *
- * The "snapshot once per timebox" rule is enforced via existsByTimeboxId(): once any
- * snapshot exists for a timebox, no further snapshots are added — even if new tactics
- * appear mid-timebox. This is intentional and matches the spec ("Priorities are fixed
- * at the start of each Timebox").
+ * Archived tactics are excluded from snapshotting — they cannot earn EVO in
+ * future timeboxes. Existing snapshots for archived tactics remain intact, so
+ * historical reports continue to display them correctly.
  */
 @Slf4j
 @Service
@@ -32,15 +31,6 @@ public class TimeboxSnapshotService {
     private final TimeboxTacticSnapshotRepository snapshotRepository;
     private final TacticRepository tacticRepository;
 
-    /**
-     * Ensures snapshots exist for the given timebox.
-     *
-     * No-op if:
-     * - The timebox has not started yet (startDate > today)
-     * - Snapshots already exist for this timebox
-     *
-     * @return number of snapshots created (0 if no-op)
-     */
     @Transactional
     public int ensureSnapshotsExist(Timebox timebox) {
         if (timebox.getStartDate().isAfter(LocalDate.now())) {
@@ -52,12 +42,6 @@ public class TimeboxSnapshotService {
         return createSnapshots(timebox);
     }
 
-    /**
-     * Unconditionally creates snapshots for a timebox, regardless of its start date.
-     * Used by the backfill runner for historical timeboxes.
-     *
-     * @return number of snapshots created (0 if snapshots already existed)
-     */
     @Transactional
     public int backfillSnapshots(Timebox timebox) {
         if (snapshotRepository.existsByTimeboxId(timebox.getId())) {
@@ -67,7 +51,7 @@ public class TimeboxSnapshotService {
     }
 
     private int createSnapshots(Timebox timebox) {
-        List<Tactic> tactics = tacticRepository.findAll();
+        List<Tactic> tactics = tacticRepository.findByArchivedFalse();
         LocalDateTime now = LocalDateTime.now();
         int created = 0;
 

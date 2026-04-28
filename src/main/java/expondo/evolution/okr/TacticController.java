@@ -10,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 public class TacticController {
@@ -43,6 +44,19 @@ public class TacticController {
         return tacticService.update(id, dto);
     }
 
+    /**
+     * Soft-delete (archive). Always succeeds.
+     */
+    @PostMapping("/api/objectives/{objectiveId}/tactics/{id}/archive")
+    @PreAuthorize("hasRole('USER')")
+    public TacticDto archive(@PathVariable Long id) {
+        return tacticService.archive(id);
+    }
+
+    /**
+     * Hard delete. Throws if the tactic has historical data — clients should
+     * fall back to /archive in that case.
+     */
     @DeleteMapping("/api/objectives/{objectiveId}/tactics/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasRole('USER')")
@@ -62,10 +76,6 @@ public class TacticController {
         return tacticService.reorder(cycleId, tacticIds);
     }
 
-    /**
-     * Get activity data (releases and efforts) for a specific tactic.
-     * Loaded on demand when expanding a tactic in the objectives overview.
-     */
     @GetMapping("/api/tactics/{tacticId}/activity")
     @PreAuthorize("hasRole('USER')")
     public TacticActivityDto getActivity(@PathVariable Long tacticId) {

@@ -10,6 +10,7 @@ import expondo.evolution.planning.TimeboxDeliveryRepository;
 import expondo.evolution.planning.TimeboxEffort;
 import expondo.evolution.planning.TimeboxEffortRepository;
 import expondo.evolution.planning.PersonDaysCalculator;
+import expondo.evolution.planning.TimeboxTacticSnapshotRepository;
 import expondo.evolution.user.Unit;
 import expondo.evolution.user.UnitRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class TacticService {
     private final TacticMapper tacticMapper;
     private final TimeboxDeliveryRepository deliveryRepository;
     private final TimeboxEffortRepository effortRepository;
+    private final TimeboxTacticSnapshotRepository snapshotRepository;
 
     public List<TacticDto> findByObjectiveId(Long objectiveId) {
         return tacticRepository.findByCompanyObjectiveIdOrderByPriorityAsc(objectiveId).stream()
@@ -50,6 +52,10 @@ public class TacticService {
         CompanyObjective objective = objectiveRepository.findById(objectiveId)
                 .orElseThrow(() -> new RuntimeException("Objective not found: " + objectiveId));
 
+        if (objective.isArchived()) {
+            throw new IllegalStateException("Cannot create tactic on archived objective " + objective.getCode());
+        }
+
         Tactic tactic = tacticMapper.toEntity(dto);
         tactic.setCompanyObjective(objective);
 
@@ -62,7 +68,6 @@ public class TacticService {
             tactic.setResponsibleUnit(unit);
         }
 
-        // Priority is always cycle-wide
         Long cycleId = objective.getCycle().getId();
         assignPriority(tactic, dto.priority(), cycleId);
 
@@ -80,6 +85,9 @@ public class TacticService {
         for (int i = 0; i < tacticIds.size(); i++) {
             Tactic tactic = tacticRepository.findById(tacticIds.get(i))
                     .orElseThrow(() -> new RuntimeException("Tactic not found"));
+            if (tactic.isArchived()) {
+                throw new IllegalStateException("Archived tactic " + tactic.getCode() + " cannot be reordered");
+            }
             tactic.setPriority(i + 1);
             tacticRepository.save(tactic);
         }
@@ -90,6 +98,11 @@ public class TacticService {
     public TacticDto update(Long id, TacticUpdateDto dto) {
         Tactic tactic = tacticRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Tactic not found: " + id));
+
+        if (tactic.isArchived()) {
+            throw new IllegalStateException("Cannot update archived tactic " + tactic.getCode());
+        }
+
         tacticMapper.updateEntity(dto, tactic);
 
         // Handle objective reassignment
@@ -97,6 +110,9 @@ public class TacticService {
                 && !dto.companyObjectiveId().equals(tactic.getCompanyObjective().getId())) {
             CompanyObjective newObjective = objectiveRepository.findById(dto.companyObjectiveId())
                     .orElseThrow(() -> new RuntimeException("Objective not found: " + dto.companyObjectiveId()));
+            if (newObjective.isArchived()) {
+                throw new IllegalStateException("Cannot reassign tactic to archived objective " + newObjective.getCode());
+            }
             tactic.setCompanyObjective(newObjective);
         }
 
@@ -111,19 +127,43 @@ public class TacticService {
         return tacticMapper.toDto(tacticRepository.save(tactic));
     }
 
+    /**
+     * Soft-delete: marks the tactic as archived. Always succeeds.
+     * Archived tactics retain all historical data and remain referenceable
+     * from snapshots, deliveries and efforts.
+     */
     @Transactional
-    public void delete(Long id) {
-        if (!tacticRepository.existsById(id)) {
-            throw new RuntimeException("Tactic not found: " + id);
-        }
-        tacticRepository.deleteById(id);
+    public TacticDto archive(Long id) {
+        Tactic tactic = tacticRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Tactic not found: " + id));
+        tactic.setArchived(true);
+        return tacticMapper.toDto(tacticRepository.save(tactic));
     }
 
     /**
-     * Get activity data (releases and team contributions) for a tactic.
-     * Loaded on demand when a user expands a tactic in the objectives overview.
-     * Efforts are aggregated per team across all timeboxes and converted to person days.
+     * Hard delete. Only allowed if no historical data references this tactic.
+     * Otherwise, an IllegalStateException is thrown — the caller is expected
+     * to use {@link #archive(Long)} instead.
      */
+    @Transactional
+    public void delete(Long id) {
+        Tactic tactic = tacticRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Tactic not found: " + id));
+
+        boolean hasSnapshots = snapshotRepository.existsByTacticId(id);
+        boolean hasDeliveries = deliveryRepository.existsByTacticId(id);
+        boolean hasEfforts = effortRepository.existsByTacticId(id);
+
+        if (hasSnapshots || hasDeliveries || hasEfforts) {
+            throw new IllegalStateException(
+                    "Tactic " + tactic.getCode() + " has historical data and cannot be deleted. " +
+                            "Use archive instead."
+            );
+        }
+
+        tacticRepository.deleteById(id);
+    }
+
     @Transactional(readOnly = true)
     public TacticActivityDto getActivity(Long tacticId) {
         List<TimeboxDelivery> deliveries = deliveryRepository.findByTacticIdWithDetails(tacticId);
@@ -147,7 +187,6 @@ public class TacticService {
                 ))
                 .toList();
 
-        // Aggregate person days per team
         Map<String, TeamAccumulator> teamMap = new LinkedHashMap<>();
         for (TimeboxEffort e : efforts) {
             BigDecimal personDays = PersonDaysCalculator.calculate(
@@ -190,13 +229,12 @@ public class TacticService {
     }
 
     /**
-     * Assign priority to a tactic within its cycle.
-     * If an explicit priority is given, shift existing tactics down.
-     * If no priority is given (null), assign the lowest (max + 1) across the entire cycle.
+     * Assign priority to a tactic within its cycle. Only active tactics participate
+     * in priority arithmetic — archived tactics keep their (frozen) priority and
+     * are not shifted, even if they collide with a new tactic's priority.
      */
     private void assignPriority(Tactic tactic, Integer requestedPriority, Long cycleId) {
         if (requestedPriority != null && requestedPriority > 0) {
-            // Explicit priority: shift all cycle tactics at this priority or lower down by 1
             List<Tactic> existing = tacticRepository.findByCycleIdOrderByPriorityAsc(cycleId);
             for (Tactic t : existing) {
                 if (t.getPriority() != null && t.getPriority() >= requestedPriority) {
@@ -206,7 +244,6 @@ public class TacticService {
             }
             tactic.setPriority(requestedPriority);
         } else {
-            // No priority: assign lowest across entire cycle
             Integer maxPriority = tacticRepository.findMaxPriorityByCycleId(cycleId);
             tactic.setPriority(maxPriority != null ? maxPriority + 1 : 1);
         }

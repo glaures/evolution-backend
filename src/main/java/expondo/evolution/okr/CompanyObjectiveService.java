@@ -25,13 +25,13 @@ public class CompanyObjectiveService {
     private final CompanyObjectiveMapper objectiveMapper;
     private final TimeboxEffortRepository effortRepository;
     private final TimeboxRepository timeboxRepository;
+    private final TacticRepository tacticRepository;
 
     public List<CompanyObjectiveDto> findByCycleId(Long cycleId) {
         List<CompanyObjectiveDto> objectives = objectiveRepository.findByCycleIdOrderByCodeAsc(cycleId).stream()
                 .map(objectiveMapper::toDto)
                 .toList();
 
-        // Enrich tactics with activity status
         Map<Long, String> activityMap = buildActivityMap(cycleId);
 
         return objectives.stream()
@@ -74,33 +74,63 @@ public class CompanyObjectiveService {
     public CompanyObjectiveDto update(Long id, CompanyObjectiveUpdateDto dto) {
         CompanyObjective objective = objectiveRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Objective not found: " + id));
+        if (objective.isArchived()) {
+            throw new IllegalStateException("Cannot update archived objective " + objective.getCode());
+        }
         objectiveMapper.updateEntity(dto, objective);
         return objectiveMapper.toDto(objectiveRepository.save(objective));
     }
 
+    /**
+     * Soft-delete: marks the CO as archived. Refuses if any active tactics
+     * still belong to the CO — they must be archived or reassigned first.
+     */
+    @Transactional
+    public CompanyObjectiveDto archive(Long id) {
+        CompanyObjective objective = objectiveRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Objective not found: " + id));
+
+        long activeCount = tacticRepository.countActiveByObjectiveId(id);
+        if (activeCount > 0) {
+            throw new IllegalStateException(
+                    "Cannot archive objective " + objective.getCode() + ": it has " + activeCount +
+                            " active tactic(s). Reassign or archive them first."
+            );
+        }
+
+        objective.setArchived(true);
+        return objectiveMapper.toDto(objectiveRepository.save(objective));
+    }
+
+    /**
+     * Hard delete. Refuses if the CO has any tactics, even archived ones —
+     * cascading the delete would also delete archived tactics that may still
+     * be referenced from historical reports.
+     */
     @Transactional
     public void delete(Long id) {
-        if (!objectiveRepository.existsById(id)) {
-            throw new RuntimeException("Objective not found: " + id);
+        CompanyObjective objective = objectiveRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Objective not found: " + id));
+
+        long totalTactics = tacticRepository.countByCompanyObjectiveId(id);
+        if (totalTactics > 0) {
+            throw new IllegalStateException(
+                    "Cannot delete objective " + objective.getCode() + ": it has " + totalTactics +
+                            " tactic(s). Delete or reassign them first."
+            );
         }
+
         objectiveRepository.deleteById(id);
     }
 
     /**
      * Build a map of tacticId -> activityStatus for all tactics in a cycle.
-     * Based on coverage: in how many of the cycle's timeboxes was effort reported?
-     *
-     * HIGH   = effort in >60% of the cycle's timeboxes
-     * MEDIUM = effort in 30-60% of the cycle's timeboxes
-     * LOW    = effort in <30% of the cycle's timeboxes (but at least once)
-     * null   = no effort ever reported
      */
     private Map<Long, String> buildActivityMap(Long cycleId) {
         List<Timebox> timeboxes = timeboxRepository.findByCycleIdOrderByNumberAsc(cycleId);
         int totalTimeboxes = timeboxes.size();
         if (totalTimeboxes == 0) return Map.of();
 
-        // Get the number of distinct timeboxes with effort per tactic
         List<Object[]> coverageData = effortRepository.findEffortCoverageByCycleId(cycleId);
 
         Map<Long, String> result = new HashMap<>();

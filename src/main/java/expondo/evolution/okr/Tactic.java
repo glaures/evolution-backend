@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.envers.Audited;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "tactics")
 @Audited
@@ -32,7 +34,7 @@ public class Tactic {
 
     /**
      * Priority rank for EVO scoring.
-     * Rank 1-4: 10 points, 5: 7, 6: 6, 7: 5, 8: 4, 9: 3, 10: 2, 11+: 1
+     * Rank 1-4: 10 points, 5-9: 7 points, 10+: 5 points.
      */
     @Column
     private Integer priority;
@@ -46,8 +48,31 @@ public class Tactic {
     private Unit responsibleUnit;
 
     /**
+     * The JIRA issue key (e.g. "EXP-1175") this tactic is mirrored from.
+     * Null if the tactic was created manually in Evolution.
+     * Unique among non-null values.
+     */
+    @Column(unique = true)
+    private String jiraIssueKey;
+
+    /**
+     * Soft-delete flag. Archived tactics:
+     * - Are hidden from active UI lists
+     * - Are not snapshotted into new timeboxes
+     * - Remain referenceable from existing snapshots, deliveries and efforts
+     *   so historical reports stay intact.
+     */
+    @Column(nullable = false)
+    private boolean archived = false;
+
+    /**
+     * Last time the JIRA sync touched this tactic. Null for tactics that have
+     * never been synced (manual or not yet linked).
+     */
+    private LocalDateTime lastSyncedAt;
+
+    /**
      * EVO score based on priority rank.
-     * Rank 1-4: 10 points, 5-9: 7 points, 10+: 5 points
      */
     public int getScore() {
         if (priority == null) return 0;

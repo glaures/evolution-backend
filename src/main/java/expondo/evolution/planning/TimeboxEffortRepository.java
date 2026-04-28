@@ -29,4 +29,6 @@ public interface TimeboxEffortRepository extends JpaRepository<TimeboxEffort, Lo
         GROUP BY e.tactic.id
     """)
     List<Object[]> findEffortCoverageByCycleId(Long cycleId);
+
+    boolean existsByTacticId(Long tacticId);
 }

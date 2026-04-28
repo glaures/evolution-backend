@@ -44,6 +44,18 @@ public class CompanyObjectiveController {
         return objectiveService.update(id, dto);
     }
 
+    /**
+     * Soft-delete (archive). Refused if the CO still has active tactics.
+     */
+    @PostMapping("/{id}/archive")
+    @PreAuthorize("hasRole('USER')")
+    public CompanyObjectiveDto archive(@PathVariable Long id) {
+        return objectiveService.archive(id);
+    }
+
+    /**
+     * Hard delete. Refused if the CO has any tactics (active or archived).
+     */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasRole('USER')")
