@@ -7,6 +7,7 @@ public record CompanyObjectiveDto(
         String code,
         String name,
         String description,
+        String jiraObjectiveName,
         Long cycleId,
         List<KeyResultDto> keyResults,
         List<TacticDto> tactics

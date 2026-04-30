@@ -19,11 +19,15 @@ public interface CompanyObjectiveMapper {
     @Mapping(target = "cycle", ignore = true)
     @Mapping(target = "keyResults", ignore = true)
     @Mapping(target = "tactics", ignore = true)
+    @Mapping(target = "archived", ignore = true)
+    @Mapping(target = "lastSyncedAt", ignore = true)
     CompanyObjective toEntity(CompanyObjectiveCreateDto dto);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "cycle", ignore = true)
     @Mapping(target = "keyResults", ignore = true)
     @Mapping(target = "tactics", ignore = true)
+    @Mapping(target = "archived", ignore = true)
+    @Mapping(target = "lastSyncedAt", ignore = true)
     void updateEntity(CompanyObjectiveUpdateDto dto, @MappingTarget CompanyObjective entity);
 }

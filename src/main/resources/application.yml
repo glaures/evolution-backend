@@ -19,7 +19,7 @@ spring:
     show-sql: ${JPA_SHOW_SQL:true}
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
 
   security:
     oauth2:
@@ -34,3 +34,15 @@ evolution:
 
 server:
   port: 8080
+
+jira:
+  base-url: ${JIRA_BASE_URL:}
+  user-email: ${JIRA_USER_EMAIL:}
+  api-token: ${JIRA_API_TOKEN:}
+  sync:
+    project-key: EXP
+    issue-type: Tatic
+    field-objective: customfield_12854
+    field-company-prio: customfield_12994
+    field-departments: customfield_12858
+    push-quiet-period-seconds: 120

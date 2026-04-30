@@ -18,10 +18,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -70,6 +72,7 @@ public class TacticService {
 
         Long cycleId = objective.getCycle().getId();
         assignPriority(tactic, dto.priority(), cycleId);
+        tactic.setPriorityChangedAt(LocalDateTime.now());
 
         return tacticMapper.toDto(tacticRepository.save(tactic));
     }
@@ -82,14 +85,19 @@ public class TacticService {
 
     @Transactional
     public List<TacticDto> reorder(Long cycleId, List<Long> tacticIds) {
+        LocalDateTime now = LocalDateTime.now();
         for (int i = 0; i < tacticIds.size(); i++) {
             Tactic tactic = tacticRepository.findById(tacticIds.get(i))
                     .orElseThrow(() -> new RuntimeException("Tactic not found"));
             if (tactic.isArchived()) {
                 throw new IllegalStateException("Archived tactic " + tactic.getCode() + " cannot be reordered");
             }
-            tactic.setPriority(i + 1);
-            tacticRepository.save(tactic);
+            int newPriority = i + 1;
+            if (tactic.getPriority() == null || tactic.getPriority() != newPriority) {
+                tactic.setPriority(newPriority);
+                tactic.setPriorityChangedAt(now);
+                tacticRepository.save(tactic);
+            }
         }
         return findByCycleId(cycleId);
     }
@@ -103,9 +111,9 @@ public class TacticService {
             throw new IllegalStateException("Cannot update archived tactic " + tactic.getCode());
         }
 
+        Integer priorityBefore = tactic.getPriority();
         tacticMapper.updateEntity(dto, tactic);
 
-        // Handle objective reassignment
         if (dto.companyObjectiveId() != null
                 && !dto.companyObjectiveId().equals(tactic.getCompanyObjective().getId())) {
             CompanyObjective newObjective = objectiveRepository.findById(dto.companyObjectiveId())
@@ -124,14 +132,13 @@ public class TacticService {
             tactic.setResponsibleUnit(null);
         }
 
+        if (!Objects.equals(priorityBefore, tactic.getPriority())) {
+            tactic.setPriorityChangedAt(LocalDateTime.now());
+        }
+
         return tacticMapper.toDto(tacticRepository.save(tactic));
     }
 
-    /**
-     * Soft-delete: marks the tactic as archived. Always succeeds.
-     * Archived tactics retain all historical data and remain referenceable
-     * from snapshots, deliveries and efforts.
-     */
     @Transactional
     public TacticDto archive(Long id) {
         Tactic tactic = tacticRepository.findById(id)
@@ -140,11 +147,6 @@ public class TacticService {
         return tacticMapper.toDto(tacticRepository.save(tactic));
     }
 
-    /**
-     * Hard delete. Only allowed if no historical data references this tactic.
-     * Otherwise, an IllegalStateException is thrown — the caller is expected
-     * to use {@link #archive(Long)} instead.
-     */
     @Transactional
     public void delete(Long id) {
         Tactic tactic = tacticRepository.findById(id)
@@ -228,17 +230,13 @@ public class TacticService {
         }
     }
 
-    /**
-     * Assign priority to a tactic within its cycle. Only active tactics participate
-     * in priority arithmetic — archived tactics keep their (frozen) priority and
-     * are not shifted, even if they collide with a new tactic's priority.
-     */
     private void assignPriority(Tactic tactic, Integer requestedPriority, Long cycleId) {
         if (requestedPriority != null && requestedPriority > 0) {
             List<Tactic> existing = tacticRepository.findByCycleIdOrderByPriorityAsc(cycleId);
             for (Tactic t : existing) {
                 if (t.getPriority() != null && t.getPriority() >= requestedPriority) {
                     t.setPriority(t.getPriority() + 1);
+                    t.setPriorityChangedAt(LocalDateTime.now());
                     tacticRepository.save(t);
                 }
             }

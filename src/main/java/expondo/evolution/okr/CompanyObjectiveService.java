@@ -36,14 +36,16 @@ public class CompanyObjectiveService {
 
         return objectives.stream()
                 .map(obj -> new CompanyObjectiveDto(
-                        obj.id(), obj.code(), obj.name(), obj.description(), obj.cycleId(),
+                        obj.id(), obj.code(), obj.name(), obj.description(),
+                        obj.jiraObjectiveName(), obj.cycleId(),
                         obj.keyResults(),
                         obj.tactics().stream()
                                 .map(t -> new TacticDto(
                                         t.id(), t.code(), t.title(), t.description(),
                                         t.priority(), t.score(), t.companyObjectiveId(),
                                         t.responsibleUnitId(), t.responsibleUnitName(),
-                                        activityMap.get(t.id())
+                                        activityMap.get(t.id()),
+                                        t.jiraIssueKey(), t.jiraDepartments(), t.jiraUrl()
                                 ))
                                 .toList()
                 ))
@@ -81,10 +83,6 @@ public class CompanyObjectiveService {
         return objectiveMapper.toDto(objectiveRepository.save(objective));
     }
 
-    /**
-     * Soft-delete: marks the CO as archived. Refuses if any active tactics
-     * still belong to the CO — they must be archived or reassigned first.
-     */
     @Transactional
     public CompanyObjectiveDto archive(Long id) {
         CompanyObjective objective = objectiveRepository.findById(id)
@@ -102,11 +100,6 @@ public class CompanyObjectiveService {
         return objectiveMapper.toDto(objectiveRepository.save(objective));
     }
 
-    /**
-     * Hard delete. Refuses if the CO has any tactics, even archived ones —
-     * cascading the delete would also delete archived tactics that may still
-     * be referenced from historical reports.
-     */
     @Transactional
     public void delete(Long id) {
         CompanyObjective objective = objectiveRepository.findById(id)
@@ -123,9 +116,6 @@ public class CompanyObjectiveService {
         objectiveRepository.deleteById(id);
     }
 
-    /**
-     * Build a map of tacticId -> activityStatus for all tactics in a cycle.
-     */
     private Map<Long, String> buildActivityMap(Long cycleId) {
         List<Timebox> timeboxes = timeboxRepository.findByCycleIdOrderByNumberAsc(cycleId);
         int totalTimeboxes = timeboxes.size();

@@ -4,58 +4,50 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 public interface TacticRepository extends JpaRepository<Tactic, Long> {
 
-    /**
-     * Active tactics for an objective, ordered by priority.
-     * Archived tactics are excluded — they remain accessible by id but never
-     * appear in active lists.
-     */
     @Query("SELECT t FROM Tactic t WHERE t.companyObjective.id = :objectiveId " +
            "AND t.archived = false ORDER BY t.priority ASC")
     List<Tactic> findByCompanyObjectiveIdOrderByPriorityAsc(@Param("objectiveId") Long objectiveId);
 
-    /**
-     * Highest priority among active tactics in an objective.
-     */
     @Query("SELECT MAX(t.priority) FROM Tactic t WHERE t.companyObjective.id = :objectiveId " +
            "AND t.archived = false")
     Integer findMaxPriorityByObjectiveId(@Param("objectiveId") Long objectiveId);
 
-    /**
-     * Highest priority among active tactics in a cycle.
-     */
     @Query("SELECT MAX(t.priority) FROM Tactic t WHERE t.companyObjective.cycle.id = :cycleId " +
            "AND t.archived = false")
     Integer findMaxPriorityByCycleId(@Param("cycleId") Long cycleId);
 
-    /**
-     * Active tactics in a cycle, ordered by priority.
-     */
     @Query("SELECT t FROM Tactic t WHERE t.companyObjective.cycle.id = :cycleId " +
            "AND t.archived = false ORDER BY t.priority ASC")
     List<Tactic> findByCycleIdOrderByPriorityAsc(@Param("cycleId") Long cycleId);
 
-    /**
-     * All tactics (including archived). Used by the snapshot service to also
-     * snapshot archived tactics? — no: see findByArchivedFalse().
-     */
     List<Tactic> findByArchivedFalse();
 
-    /**
-     * Active tactic count for an objective. Used to gate CO archival/deletion.
-     */
     @Query("SELECT COUNT(t) FROM Tactic t WHERE t.companyObjective.id = :objectiveId " +
            "AND t.archived = false")
     long countActiveByObjectiveId(@Param("objectiveId") Long objectiveId);
 
-    /**
-     * Total tactic count for an objective (active + archived). Used to gate CO deletion.
-     */
     long countByCompanyObjectiveId(Long companyObjectiveId);
 
     Optional<Tactic> findByJiraIssueKey(String jiraIssueKey);
+
+    /**
+     * Tactics whose priority needs to be pushed to JIRA:
+     * - linked to JIRA (jiraIssueKey not null)
+     * - active (not archived)
+     * - have a priority
+     * - the last pushed value differs from current (or has never been pushed)
+     * - the priority hasn't changed in the last quiet period (debounce)
+     */
+    @Query("SELECT t FROM Tactic t WHERE t.jiraIssueKey IS NOT NULL " +
+           "AND t.archived = false " +
+           "AND t.priority IS NOT NULL " +
+           "AND (t.jiraPriorityPushed IS NULL OR t.jiraPriorityPushed <> t.priority) " +
+           "AND (t.priorityChangedAt IS NULL OR t.priorityChangedAt < :cutoff)")
+    List<Tactic> findPushCandidates(@Param("cutoff") LocalDateTime cutoff);
 }

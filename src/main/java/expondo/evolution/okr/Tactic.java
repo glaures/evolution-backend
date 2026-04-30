@@ -32,10 +32,6 @@ public class Tactic {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    /**
-     * Priority rank for EVO scoring.
-     * Rank 1-4: 10 points, 5-9: 7 points, 10+: 5 points.
-     */
     @Column
     private Integer priority;
 
@@ -47,33 +43,26 @@ public class Tactic {
     @JoinColumn(name = "responsible_unit_id")
     private Unit responsibleUnit;
 
-    /**
-     * The JIRA issue key (e.g. "EXP-1175") this tactic is mirrored from.
-     * Null if the tactic was created manually in Evolution.
-     * Unique among non-null values.
-     */
     @Column(unique = true)
     private String jiraIssueKey;
 
     /**
-     * Soft-delete flag. Archived tactics:
-     * - Are hidden from active UI lists
-     * - Are not snapshotted into new timeboxes
-     * - Remain referenceable from existing snapshots, deliveries and efforts
-     *   so historical reports stay intact.
+     * Departments value pulled from the JIRA issue, stored verbatim as a comma-separated
+     * string (e.g. "Finance, Operations"). Read-only from Evolution's perspective —
+     * fully owned by the JIRA sync. Will be replaced by a proper Unit mapping later.
      */
+    @Column(length = 500)
+    private String jiraDepartments;
+
     @Column(nullable = false)
     private boolean archived = false;
 
-    /**
-     * Last time the JIRA sync touched this tactic. Null for tactics that have
-     * never been synced (manual or not yet linked).
-     */
     private LocalDateTime lastSyncedAt;
 
-    /**
-     * EVO score based on priority rank.
-     */
+    private Integer jiraPriorityPushed;
+
+    private LocalDateTime priorityChangedAt;
+
     public int getScore() {
         if (priority == null) return 0;
         if (priority <= 4) return 10;
