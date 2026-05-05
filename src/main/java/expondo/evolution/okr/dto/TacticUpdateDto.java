@@ -6,5 +6,6 @@ public record TacticUpdateDto(
         String description,
         Integer priority,
         Long responsibleUnitId,
-        Long companyObjectiveId
+        Long companyObjectiveId,
+        String jiraIssueKey
 ) {}

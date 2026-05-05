@@ -24,10 +24,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class TacticService {
+
+    private static final Pattern JIRA_KEY_PATTERN = Pattern.compile("^[A-Z][A-Z0-9_]*-\\d+$");
 
     private final TacticRepository tacticRepository;
     private final CompanyObjectiveRepository objectiveRepository;
@@ -114,6 +117,10 @@ public class TacticService {
         Integer priorityBefore = tactic.getPriority();
         tacticMapper.updateEntity(dto, tactic);
 
+        // Handle jiraIssueKey explicitly: validate format, normalize empty to null,
+        // check uniqueness. The mapper ignores this field, so we control it here.
+        applyJiraIssueKey(tactic, dto.jiraIssueKey());
+
         if (dto.companyObjectiveId() != null
                 && !dto.companyObjectiveId().equals(tactic.getCompanyObjective().getId())) {
             CompanyObjective newObjective = objectiveRepository.findById(dto.companyObjectiveId())
@@ -137,6 +144,36 @@ public class TacticService {
         }
 
         return tacticMapper.toDto(tacticRepository.save(tactic));
+    }
+
+    /**
+     * Applies a (possibly null/blank) JIRA issue key to a tactic, validating
+     * format and uniqueness. Empty string is normalized to null (= unlink).
+     */
+    private void applyJiraIssueKey(Tactic tactic, String requestedKey) {
+        String normalized = (requestedKey == null || requestedKey.isBlank())
+                ? null
+                : requestedKey.trim();
+
+        // No change — skip
+        if (Objects.equals(normalized, tactic.getJiraIssueKey())) {
+            return;
+        }
+
+        if (normalized != null) {
+            if (!JIRA_KEY_PATTERN.matcher(normalized).matches()) {
+                throw new IllegalArgumentException(
+                        "JIRA issue key '" + normalized + "' is not in the expected format (e.g. EXP-1234).");
+            }
+            tacticRepository.findByJiraIssueKey(normalized).ifPresent(other -> {
+                if (!other.getId().equals(tactic.getId())) {
+                    throw new IllegalStateException(
+                            "JIRA issue key " + normalized + " is already linked to tactic " + other.getCode() + ".");
+                }
+            });
+        }
+
+        tactic.setJiraIssueKey(normalized);
     }
 
     @Transactional
