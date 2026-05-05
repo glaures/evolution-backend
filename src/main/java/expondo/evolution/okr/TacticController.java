@@ -1,5 +1,6 @@
 package expondo.evolution.okr;
 
+import expondo.evolution.okr.dto.ReorderResultDto;
 import expondo.evolution.okr.dto.TacticActivityDto;
 import expondo.evolution.okr.dto.TacticCreateDto;
 import expondo.evolution.okr.dto.TacticDto;
@@ -44,19 +45,12 @@ public class TacticController {
         return tacticService.update(id, dto);
     }
 
-    /**
-     * Soft-delete (archive). Always succeeds.
-     */
     @PostMapping("/api/objectives/{objectiveId}/tactics/{id}/archive")
     @PreAuthorize("hasRole('USER')")
     public TacticDto archive(@PathVariable Long id) {
         return tacticService.archive(id);
     }
 
-    /**
-     * Hard delete. Throws if the tactic has historical data — clients should
-     * fall back to /archive in that case.
-     */
     @DeleteMapping("/api/objectives/{objectiveId}/tactics/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasRole('USER')")
@@ -70,10 +64,14 @@ public class TacticController {
         return tacticService.findByCycleId(cycleId);
     }
 
+    /**
+     * Persists the new tactic order and triggers a synchronous push of
+     * affected priorities to JIRA.
+     */
     @PutMapping("/api/cycles/{cycleId}/tactics/reorder")
     @PreAuthorize("hasRole('USER')")
-    public List<TacticDto> reorder(@PathVariable Long cycleId, @RequestBody List<Long> tacticIds) {
-        return tacticService.reorder(cycleId, tacticIds);
+    public ReorderResultDto reorder(@PathVariable Long cycleId, @RequestBody List<Long> tacticIds) {
+        return tacticService.reorderAndPush(cycleId, tacticIds);
     }
 
     @GetMapping("/api/tactics/{tacticId}/activity")

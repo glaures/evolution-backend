@@ -20,8 +20,19 @@ import java.util.Map;
  * - Tactic has a jiraIssueKey
  * - Tactic is not archived
  * - Tactic.priority != Tactic.jiraPriorityPushed (= the value last successfully pushed)
- * - Tactic.priorityChangedAt is older than the configured quiet period
- *   (debounce — gives the user time to keep dragging without spamming JIRA)
+ *
+ * Two trigger paths:
+ *  1) Scheduler-driven (debounced): pushPendingPriorities() runs every 30s and only
+ *     touches tactics whose priorityChangedAt is older than the configured quiet
+ *     period. This is the safety net for failed direct pushes and also handles
+ *     priority changes made outside the prioritization page.
+ *  2) Direct-after-save: pushAllNowForCycle() runs synchronously right after the
+ *     user clicks "Save Order" and ignores the quiet period — the user has just
+ *     deliberately committed an order, so there's nothing to debounce.
+ *
+ * All JIRA edits are sent with notifyUsers=false to avoid spamming watchers
+ * when many tickets are updated at once. This requires the service-account user
+ * to have project-admin (or higher) permission on the project.
  */
 @Slf4j
 @Service
@@ -33,7 +44,7 @@ public class JiraPushService {
     private final JiraProperties props;
 
     /**
-     * Push all eligible tactics. Called by the scheduler.
+     * Push all eligible tactics that are past the quiet period. Called by the scheduler.
      *
      * Each push runs in its own transaction (per tactic) so a single JIRA error
      * doesn't roll back the whole batch.
@@ -51,23 +62,44 @@ public class JiraPushService {
 
         List<Tactic> candidates = tacticRepository.findPushCandidates(cutoff);
 
-        if (candidates.isEmpty()) return 0;
+        return pushBatch(candidates).succeeded();
+    }
+
+    /**
+     * Push every tactic in the given cycle whose priority differs from
+     * jiraPriorityPushed, ignoring the quiet period. Used right after Save Order.
+     */
+    public PushResult pushAllNowForCycle(Long cycleId) {
+        if (!props.isConfigured() || props.sync() == null
+                || props.sync().fieldCompanyPrio() == null) {
+            return new PushResult(0, 0);
+        }
+
+        List<Tactic> candidates = tacticRepository.findPushCandidatesByCycle(cycleId);
+        return pushBatch(candidates);
+    }
+
+    private PushResult pushBatch(List<Tactic> candidates) {
+        if (candidates.isEmpty()) return new PushResult(0, 0);
 
         int succeeded = 0;
+        int failed = 0;
         for (Tactic t : candidates) {
             try {
                 pushOne(t.getId());
                 succeeded++;
             } catch (Exception e) {
+                failed++;
                 log.warn("Failed to push priority for tactic {} (JIRA key {}): {}",
                         t.getCode(), t.getJiraIssueKey(), e.getMessage());
             }
         }
 
-        if (succeeded > 0) {
-            log.info("Pushed priorities for {}/{} tactic(s) to JIRA", succeeded, candidates.size());
+        if (succeeded > 0 || failed > 0) {
+            log.info("JIRA push: {} succeeded, {} failed (out of {} candidates)",
+                    succeeded, failed, candidates.size());
         }
-        return succeeded;
+        return new PushResult(succeeded, failed);
     }
 
     @Transactional
@@ -86,7 +118,10 @@ public class JiraPushService {
 
         try {
             jiraRestClient.put()
-                    .uri("/rest/api/3/issue/{key}", t.getJiraIssueKey())
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/rest/api/3/issue/{key}")
+                            .queryParam("notifyUsers", "false")
+                            .build(t.getJiraIssueKey()))
                     .header("Content-Type", "application/json")
                     .body(body)
                     .retrieve()
@@ -99,4 +134,6 @@ public class JiraPushService {
                     "JIRA returned " + e.getStatusCode() + ": " + e.getResponseBodyAsString(), e);
         }
     }
+
+    public record PushResult(int succeeded, int failed) {}
 }

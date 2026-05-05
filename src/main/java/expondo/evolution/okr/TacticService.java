@@ -1,9 +1,8 @@
 package expondo.evolution.okr;
 
-import expondo.evolution.okr.dto.TacticActivityDto;
-import expondo.evolution.okr.dto.TacticCreateDto;
-import expondo.evolution.okr.dto.TacticDto;
-import expondo.evolution.okr.dto.TacticUpdateDto;
+import expondo.evolution.jira.JiraProperties;
+import expondo.evolution.jira.JiraPushService;
+import expondo.evolution.okr.dto.*;
 import expondo.evolution.okr.mapper.TacticMapper;
 import expondo.evolution.planning.TimeboxDelivery;
 import expondo.evolution.planning.TimeboxDeliveryRepository;
@@ -39,6 +38,8 @@ public class TacticService {
     private final TimeboxDeliveryRepository deliveryRepository;
     private final TimeboxEffortRepository effortRepository;
     private final TimeboxTacticSnapshotRepository snapshotRepository;
+    private final JiraProperties jiraProperties;
+    private final JiraPushService jiraPushService;
 
     public List<TacticDto> findByObjectiveId(Long objectiveId) {
         return tacticRepository.findByCompanyObjectiveIdOrderByPriorityAsc(objectiveId).stream()
@@ -86,8 +87,19 @@ public class TacticService {
                 .toList();
     }
 
+// PATCH for TacticService.java
+//
+// ADD this field next to the other @RequiredArgsConstructor-injected dependencies:
+//
+//     private final expondo.evolution.jira.JiraPushService jiraPushService;
+//     private final expondo.evolution.jira.JiraProperties jiraProperties;
+//
+// REPLACE the existing reorder(...) method with the version below.
+// The signature changes from List<TacticDto> to ReorderResultDto, so the
+// controller signature needs to change too (see TacticController patch).
+
     @Transactional
-    public List<TacticDto> reorder(Long cycleId, List<Long> tacticIds) {
+    public List<TacticDto> reorderInternal(Long cycleId, List<Long> tacticIds) {
         LocalDateTime now = LocalDateTime.now();
         for (int i = 0; i < tacticIds.size(); i++) {
             Tactic tactic = tacticRepository.findById(tacticIds.get(i))
@@ -105,6 +117,29 @@ public class TacticService {
         return findByCycleId(cycleId);
     }
 
+    /**
+     * New entry point: persists the new order, then pushes priorities to JIRA
+     * synchronously. The DB transaction commits before the push starts so JIRA
+     * sees the actual saved values.
+     */
+    public ReorderResultDto reorderAndPush(Long cycleId, List<Long> tacticIds) {
+        // Step 1: persist (transactional, commits)
+        List<TacticDto> tactics = reorderInternal(cycleId, tacticIds);
+
+        // Step 2: push (each pushOne is its own transaction inside JiraPushService)
+        boolean configured = jiraProperties.isConfigured()
+                && jiraProperties.sync() != null
+                && jiraProperties.sync().fieldCompanyPrio() != null;
+
+        if (!configured) {
+            return new ReorderResultDto(tactics, 0, 0, false);
+        }
+
+        JiraPushService.PushResult result = jiraPushService.pushAllNowForCycle(cycleId);
+        return new ReorderResultDto(tactics, result.succeeded(), result.failed(), true);
+    }
+
+    // REMOVE the old reorder(...) method, it's replaced by the two methods above.
     @Transactional
     public TacticDto update(Long id, TacticUpdateDto dto) {
         Tactic tactic = tacticRepository.findById(id)
