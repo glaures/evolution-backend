@@ -10,5 +10,11 @@ public record TacticSnapshotDto(
         String companyObjectiveCode,
         boolean archived,
         String jiraIssueKey,
-        String jiraUrl
+        String jiraUrl,
+        /**
+         * Departments come from the live Tactic — there's no historical
+         * snapshot of this field. The current value is shown for filtering
+         * convenience in the snapshot view.
+         */
+        String jiraDepartments
 ) {}

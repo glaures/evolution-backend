@@ -51,7 +51,8 @@ public class TacticSnapshotService {
                         s.getTactic().getCompanyObjective().getCode(),
                         s.getTactic().isArchived(),
                         s.getTactic().getJiraIssueKey(),
-                        buildJiraUrl(s.getTactic().getJiraIssueKey())
+                        buildJiraUrl(s.getTactic().getJiraIssueKey()),
+                        s.getTactic().getJiraDepartments()
                 ))
                 .toList();
     }
